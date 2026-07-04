@@ -1,0 +1,657 @@
+// screens/HomeScreen.tsx
+import React, { useState, useCallback } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  FlatList,
+  SafeAreaView,
+  StatusBar,
+  RefreshControl,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+} from "react-native";
+import Icon from "react-native-vector-icons/Feather";
+import { useFocusEffect } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import api from "../api/axios";
+import LiveClasses from "../components/LiveClasses";
+import { useAuth } from "../context/AuthContext"
+
+const { width, height } = Dimensions.get("window");
+
+const Home = ({ navigation }: any) => {
+  const [userData, setUserData] = useState<any>(null);
+  const [studentStats, setStudentStats] = useState<any>(null);
+  const [teachersData, setTeachersData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const { logout, user } = useAuth();
+
+  // Mock data for categories and recommendations
+  const popularCategories = [
+    { id: "1", name: "Coding", icon: "code" },
+    { id: "2", name: "Design", icon: "pen-tool" },
+    { id: "3", name: "Business", icon: "briefcase" },
+    { id: "4", name: "Marketing", icon: "trending-up" },
+    { id: "5", name: "Data Science", icon: "database" },
+  ];
+
+  const recommendations = [
+    {
+      id: "1",
+      title: "ADVANCED PYTHON",
+      subtitle: "Data Science Mastery",
+      duration: "12h 30m",
+      lessons: "24 lessons",
+      followers: "8k followers",
+    },
+    {
+      id: "2",
+      title: "ECO",
+      subtitle: "Perspective",
+      duration: "8h 45m",
+      lessons: "18 lessons",
+      followers: "8k followers",
+      isEco: true,
+    },
+  ];
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      
+      const isLoggedIn = await AsyncStorage.getItem("isLoggedIn");
+      if (!isLoggedIn) {
+        navigation.replace("Login");
+        return;
+      }
+
+      const userResponse = await api.get("/auth/me");
+      if (userResponse.data.success) {
+        setUserData(userResponse.data.data);
+      }
+
+      const statsResponse = await api.get("/users/students/stats");
+      if (statsResponse.data.success) {
+        setStudentStats(statsResponse.data.data);
+      }
+
+      const teachersResponse = await api.get("/users/teachers/summary");
+      if (teachersResponse.data.success) {
+        setTeachersData(teachersResponse.data.data);
+      }
+
+    } catch (error: any) {
+      console.error("Error fetching dashboard data:", error);
+      if (error.response?.status === 401) {
+        await AsyncStorage.removeItem("isLoggedIn");
+        navigation.replace("Login");
+      }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchDashboardData();
+    }, [])
+  );
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchDashboardData();
+  };
+
+  const handleLogout = async () => {
+    Alert.alert(
+      "Logout",
+      "Are you sure you want to logout?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Logout",
+          style: "destructive",
+          onPress: async () => {
+            await AsyncStorage.removeItem("isLoggedIn");
+            await logout();
+          },
+        },
+      ]
+    );
+  };
+
+  const renderCategory = ({ item }: any) => (
+    <TouchableOpacity 
+      style={styles.categoryCard}
+      onPress={() => navigation.navigate("CategoryCourses", { categoryId: item.id })}
+    >
+      <View style={styles.categoryIconContainer}>
+        <Icon name={item.icon} size={24} color="#4F46E5" />
+      </View>
+      <Text style={styles.categoryName}>{item.name}</Text>
+    </TouchableOpacity>
+  );
+
+  const renderRecommendation = ({ item }: any) => (
+    <TouchableOpacity 
+      style={styles.recommendationCard}
+      onPress={() => navigation.navigate("CourseDetail", { courseId: item.id })}
+    >
+      <View style={styles.recommendationHeader}>
+        <Text style={styles.recommendationTitle}>{item.title}</Text>
+        {item.isEco && (
+          <View style={styles.ecoBadge}>
+            <Text style={styles.ecoBadgeText}>ECO</Text>
+          </View>
+        )}
+      </View>
+      <Text style={styles.recommendationSubtitle}>{item.subtitle}</Text>
+      <View style={styles.recommendationMeta}>
+        <View style={styles.metaItem}>
+          <Icon name="clock" size={14} color="#6B7280" />
+          <Text style={styles.metaText}>{item.duration}</Text>
+        </View>
+        <View style={styles.metaItem}>
+          <Icon name="file-text" size={14} color="#6B7280" />
+          <Text style={styles.metaText}>{item.lessons}</Text>
+        </View>
+        <View style={styles.metaItem}>
+          <Icon name="star" size={14} color="#6B7280" />
+          <Text style={styles.metaText}>{item.followers}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+
+  if (loading && !refreshing) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4F46E5" />
+        <Text style={styles.loadingText}>Loading your dashboard...</Text>
+      </View>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#F5F6FF" />
+      
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.greeting}>Welcome,</Text>
+            <Text style={styles.userName}>
+              {userData?.personalInfo?.name || "User"}
+            </Text>
+          </View>
+          <View style={styles.headerActions}>
+            <TouchableOpacity 
+              style={styles.iconButton}
+              onPress={() => navigation.navigate("Notifications")}
+            >
+              <Icon name="bell" size={22} color="#111827" />
+              <View style={styles.notificationBadge} />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.profileButton}
+              onPress={() => navigation.navigate("Profile")}
+            >
+              {userData?.personalInfo?.profileImage ? (
+                <Image 
+                  source={{ uri: userData.personalInfo.profileImage }} 
+                  style={styles.profileImage}
+                />
+              ) : (
+                <View style={styles.profilePlaceholder}>
+                  <Text style={styles.profileInitial}>
+                    {userData?.personalInfo?.name?.[0] || "U"}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Progress Card */}
+        <View style={styles.progressCard}>
+          <Text style={styles.progressText}>
+            Your learning journey is 65% complete this week. Keep it up!
+          </Text>
+          
+          <View style={styles.currentCourseContainer}>
+            <View style={styles.currentCourseHeader}>
+              <Text style={styles.currentCourseLabel}>CURRENT COURSE</Text>
+              <TouchableOpacity onPress={() => navigation.navigate("CourseDetail", { courseId: "current" })}>
+                <Text style={styles.continueText}>Continue</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.courseTitle}>Intro to UX Design</Text>
+            <Text style={styles.courseModule}>
+              Module 4: User Personas & Journey Maps
+            </Text>
+            
+            <View style={styles.progressBarContainer}>
+              <View style={styles.progressBar}>
+                <View style={[styles.progressFill, { width: "72%" }]} />
+              </View>
+              <Text style={styles.progressPercentage}>72%</Text>
+            </View>
+            
+            <TouchableOpacity 
+              style={styles.continueButton}
+              onPress={() => navigation.navigate("CourseDetail", { courseId: "current" })}
+            >
+              <Text style={styles.continueButtonText}>Continue Learning</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Stats Section */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{studentStats?.totalStudents || 0}</Text>
+            <Text style={styles.statLabel}>Total Students</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{studentStats?.activeStudents || 0}</Text>
+            <Text style={styles.statLabel}>Active Students</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{teachersData?.totalTeachers || 0}</Text>
+            <Text style={styles.statLabel}>Total Teachers</Text>
+          </View>
+        </View>
+
+        {/* Popular Categories */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Popular Categories</Text>
+          <TouchableOpacity onPress={() => navigation.navigate("Categories")}>
+            <Text style={styles.seeAllText}>See all</Text>
+          </TouchableOpacity>
+        </View>
+
+        <FlatList
+          data={popularCategories}
+          renderItem={renderCategory}
+          keyExtractor={(item) => item.id}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.categoriesList}
+          contentContainerStyle={styles.categoriesListContent}
+        />
+
+        {/* Live Classes Section */}
+        <View style={styles.liveClassesContainer}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Live Classes</Text>
+            <TouchableOpacity onPress={() => navigation.navigate("AllLiveClasses")}>
+              <Text style={styles.seeAllText}>See all</Text>
+            </TouchableOpacity>
+          </View>
+          <LiveClasses navigation={navigation} />
+        </View>
+
+        {/* Recommended for You */}
+        <View style={styles.recommendedSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Recommended for You</Text>
+          </View>
+          <FlatList
+            data={recommendations}
+            renderItem={renderRecommendation}
+            keyExtractor={(item) => item.id}
+            scrollEnabled={false}
+            style={styles.recommendationsList}
+          />
+        </View>
+
+        {/* Logout Button */}
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Icon name="log-out" size={20} color="#EF4444" />
+          <Text style={styles.logoutText}>Logout</Text>
+        </TouchableOpacity>
+
+        {/* Extra bottom space */}
+        <View style={styles.bottomSpace} />
+      </ScrollView>
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#F5F6FF",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F5F6FF",
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: "#6B7280",
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: width * 0.05,
+    paddingTop: height * 0.02,
+    paddingBottom: height * 0.01,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  greeting: {
+    fontSize: width * 0.035,
+    color: "#6B7280",
+  },
+  userName: {
+    fontSize: width * 0.05,
+    fontWeight: "bold",
+    color: "#111827",
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  iconButton: {
+    width: width * 0.11,
+    height: width * 0.11,
+    borderRadius: width * 0.055,
+    backgroundColor: "#FFFFFF",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: width * 0.03,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  notificationBadge: {
+    position: "absolute",
+    top: width * 0.025,
+    right: width * 0.025,
+    width: width * 0.02,
+    height: width * 0.02,
+    borderRadius: width * 0.01,
+    backgroundColor: "#EF4444",
+    borderWidth: 1,
+    borderColor: "#FFFFFF",
+  },
+  profileButton: {
+    width: width * 0.11,
+    height: width * 0.11,
+    borderRadius: width * 0.055,
+    backgroundColor: "#E5E7EB",
+    overflow: "hidden",
+  },
+  profileImage: {
+    width: width * 0.11,
+    height: width * 0.11,
+    borderRadius: width * 0.055,
+  },
+  profilePlaceholder: {
+    width: width * 0.11,
+    height: width * 0.11,
+    borderRadius: width * 0.055,
+    backgroundColor: "#4F46E5",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  profileInitial: {
+    fontSize: width * 0.045,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+  },
+  progressCard: {
+    margin: width * 0.05,
+    padding: width * 0.04,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  progressText: {
+    fontSize: width * 0.035,
+    color: "#6B7280",
+    marginBottom: height * 0.02,
+  },
+  currentCourseContainer: {
+    marginTop: height * 0.005,
+  },
+  currentCourseHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: height * 0.01,
+  },
+  currentCourseLabel: {
+    fontSize: width * 0.03,
+    color: "#4F46E5",
+    fontWeight: "600",
+  },
+  continueText: {
+    fontSize: width * 0.035,
+    color: "#4F46E5",
+    fontWeight: "500",
+  },
+  courseTitle: {
+    fontSize: width * 0.045,
+    fontWeight: "bold",
+    color: "#111827",
+    marginBottom: height * 0.005,
+  },
+  courseModule: {
+    fontSize: width * 0.035,
+    color: "#6B7280",
+    marginBottom: height * 0.02,
+  },
+  progressBarContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: height * 0.02,
+  },
+  progressBar: {
+    flex: 1,
+    height: height * 0.01,
+    backgroundColor: "#E5E7EB",
+    borderRadius: 4,
+    marginRight: width * 0.03,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    backgroundColor: "#4F46E5",
+    borderRadius: 4,
+  },
+  progressPercentage: {
+    fontSize: width * 0.035,
+    fontWeight: "600",
+    color: "#111827",
+  },
+  continueButton: {
+    backgroundColor: "#4F46E5",
+    paddingVertical: height * 0.015,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  continueButtonText: {
+    color: "#FFFFFF",
+    fontSize: width * 0.04,
+    fontWeight: "600",
+  },
+  statsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: width * 0.05,
+    marginBottom: height * 0.03,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+    padding: width * 0.04,
+    borderRadius: 12,
+    marginHorizontal: width * 0.01,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  statNumber: {
+    fontSize: width * 0.05,
+    fontWeight: "bold",
+    color: "#111827",
+  },
+  statLabel: {
+    fontSize: width * 0.03,
+    color: "#6B7280",
+    marginTop: height * 0.005,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: width * 0.05,
+    marginBottom: height * 0.015,
+  },
+  sectionTitle: {
+    fontSize: width * 0.045,
+    fontWeight: "bold",
+    color: "#111827",
+  },
+  seeAllText: {
+    fontSize: width * 0.035,
+    color: "#4F46E5",
+  },
+  categoriesList: {
+    paddingLeft: width * 0.02,
+    marginBottom: height * 0.03,
+  },
+  categoriesListContent: {
+    paddingHorizontal: width * 0.03,
+  },
+  categoryCard: {
+    alignItems: "center",
+    marginRight: width * 0.04,
+    width: width * 0.18,
+  },
+  categoryIconContainer: {
+    width: width * 0.14,
+    height: width * 0.14,
+    borderRadius: width * 0.07,
+    backgroundColor: "#EEF2FF",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: height * 0.01,
+  },
+  categoryName: {
+    fontSize: width * 0.03,
+    color: "#111827",
+    textAlign: "center",
+  },
+  liveClassesContainer: {
+    marginBottom: height * 0.02,
+  },
+  recommendedSection: {
+    marginTop: height * 0.01,
+  },
+  recommendationsList: {
+    paddingHorizontal: width * 0.05,
+  },
+  recommendationCard: {
+    backgroundColor: "#FFFFFF",
+    padding: width * 0.04,
+    borderRadius: 12,
+    marginBottom: height * 0.015,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  recommendationHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: height * 0.005,
+  },
+  recommendationTitle: {
+    fontSize: width * 0.035,
+    fontWeight: "bold",
+    color: "#111827",
+  },
+  ecoBadge: {
+    backgroundColor: "#10B981",
+    paddingHorizontal: width * 0.02,
+    paddingVertical: height * 0.002,
+    borderRadius: 4,
+  },
+  ecoBadgeText: {
+    color: "#FFFFFF",
+    fontSize: width * 0.025,
+    fontWeight: "600",
+  },
+  recommendationSubtitle: {
+    fontSize: width * 0.035,
+    color: "#6B7280",
+    marginBottom: height * 0.01,
+  },
+  recommendationMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  metaItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: width * 0.04,
+  },
+  metaText: {
+    fontSize: width * 0.03,
+    color: "#6B7280",
+    marginLeft: width * 0.01,
+  },
+  logoutButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FEE2E2",
+    marginHorizontal: width * 0.05,
+    padding: height * 0.018,
+    borderRadius: 12,
+    marginTop: height * 0.015,
+  },
+  logoutText: {
+    color: "#EF4444",
+    fontSize: width * 0.04,
+    fontWeight: "600",
+    marginLeft: width * 0.02,
+  },
+  bottomSpace: {
+    height: height * 0.025,
+  },
+});
+
+export default Home;
