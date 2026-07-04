@@ -1,4 +1,4 @@
-// pages/VideoCall.tsx - Using WebView for LiveKit
+// pages/VideoCall.tsx - Complete working version
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -15,6 +15,7 @@ import {
   TextInput,
   FlatList,
   KeyboardAvoidingView,
+  ScrollView,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import Icon from 'react-native-vector-icons/Feather';
@@ -62,7 +63,7 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
     batch,
   } = route.params || {};
 
-  const [isConnected, setIsConnected] = useState(true);
+  const [isConnected, setIsConnected] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [isHandRaised, setIsHandRaised] = useState(false);
@@ -72,94 +73,18 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [showParticipants, setShowParticipants] = useState(false);
-  const [webViewError, setWebViewError] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [participantCount, setParticipantCount] = useState(1);
   
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const webViewRef = useRef<WebView>(null);
 
-  // HTML for LiveKit WebView
-  const getLiveKitHTML = () => {
-    return `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-          <title>LiveKit Call</title>
-          <style>
-            body { margin: 0; padding: 0; background: #1a1a1a; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-            #container { width: 100%; height: 100%; display: flex; flex-direction: column; background: #0a0a0a; }
-            #header { background: #1a1a1a; padding: 15px; text-align: center; border-bottom: 1px solid #333; }
-            #header h1 { margin: 0; color: #fff; font-size: 18px; }
-            #video-container { flex: 1; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; padding: 10px; gap: 10px; background: #0a0a0a; }
-            .video-box { background: #2a2a2a; border-radius: 12px; min-width: 200px; min-height: 150px; display: flex; flex-direction: column; justify-content: center; align-items: center; flex: 1; border: 2px solid #4F46E5; position: relative; }
-            .video-box .participant-name { position: absolute; bottom: 10px; left: 10px; background: rgba(0,0,0,0.7); padding: 4px 12px; border-radius: 6px; color: #fff; font-size: 12px; }
-            .avatar { width: 60px; height: 60px; border-radius: 30px; background: #4F46E5; display: flex; justify-content: center; align-items: center; font-size: 24px; color: #fff; font-weight: bold; margin-bottom: 8px; }
-            .participant-status { color: #4CAF50; font-size: 12px; }
-            #status-bar { background: rgba(0,0,0,0.8); padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #333; }
-            #status-bar .status-text { color: #FF4444; font-size: 14px; font-weight: 600; }
-            #status-bar .duration { color: #4CAF50; font-size: 14px; font-weight: 500; }
-            #status-bar .participants { color: #999; font-size: 14px; }
-            .connecting { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; color: #fff; }
-            .connecting .spinner { width: 40px; height: 40px; border: 4px solid #333; border-top: 4px solid #4F46E5; border-radius: 50%; animation: spin 1s linear infinite; }
-            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-            .connecting p { margin-top: 20px; color: #999; }
-            .error { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; color: #fff; }
-            .error .icon { font-size: 48px; }
-            .error h2 { color: #EF4444; }
-            .error p { color: #999; }
-          </style>
-        </head>
-        <body>
-          <div id="container">
-            <div id="header">
-              <h1>${title || 'Live Class'}</h1>
-            </div>
-            <div id="video-container">
-              <div class="video-box">
-                <div class="avatar">${participantName?.charAt(0).toUpperCase() || 'U'}</div>
-                <div style="color:#fff;font-weight:600;">${participantName || 'You'}</div>
-                <div class="participant-status">● Connected</div>
-                <div class="participant-name">You</div>
-              </div>
-              <div class="video-box" style="border-color:#666;">
-                <div class="avatar" style="background:#6B7280;">T</div>
-                <div style="color:#fff;font-weight:600;">${teacher || 'Teacher'}</div>
-                <div class="participant-status">● Connected</div>
-                <div class="participant-name">Teacher</div>
-              </div>
-            </div>
-            <div id="status-bar">
-              <span class="status-text">🔴 Live</span>
-              <span class="duration">⏱ 00:00</span>
-              <span class="participants">👥 2</span>
-            </div>
-          </div>
-          <script>
-            // Log connection info
-            console.log('Room Name:', '${roomName}');
-            console.log('Token:', '${token?.substring(0, 50)}...');
-            console.log('Server URL:', '${serverURL}');
-            console.log('Participant:', '${participantName}');
-            
-            // Update duration
-            let seconds = 0;
-            setInterval(() => {
-              seconds++;
-              const mins = String(Math.floor(seconds / 60)).padStart(2, '0');
-              const secs = String(seconds % 60).padStart(2, '0');
-              document.querySelector('.duration').textContent = '⏱ ' + mins + ':' + secs;
-            }, 1000);
-          </script>
-        </body>
-      </html>
-    `;
-  };
-
   useEffect(() => {
-    console.log('📱 VideoCall screen mounted');
+    console.log('📱 VideoCall mounted');
     console.log('📋 Room Name:', roomName);
     console.log('👤 Participant:', participantName);
+    console.log('🔑 Token:', token?.substring(0, 50) + '...');
+    console.log('🌐 Server URL:', serverURL);
 
     const timer = setInterval(() => {
       setCallDuration((prev) => prev + 1);
@@ -169,14 +94,13 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
       setShowControls(false);
     }, 5000);
 
-    // Add system messages
     setTimeout(() => {
-      addChatMessage('system', `${teacher} joined the call`);
-    }, 2000);
+      addChatMessage('system', `${teacher} is hosting the class`);
+    }, 3000);
 
     setTimeout(() => {
-      addChatMessage('system', 'Student 1 joined the call');
-    }, 4000);
+      setLoading(false);
+    }, 5000);
 
     return () => {
       clearInterval(timer);
@@ -202,6 +126,14 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
     if (!chatInput.trim()) return;
     addChatMessage(participantName || 'You', chatInput.trim());
     setChatInput('');
+    
+    if (webViewRef.current) {
+      webViewRef.current.injectJavaScript(`
+        if (window.sendChatMessage) {
+          window.sendChatMessage('${participantName}', '${chatInput.trim()}');
+        }
+      `);
+    }
   };
 
   const formatDuration = (seconds: number) => {
@@ -226,6 +158,36 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
     setIsHandRaised(!isHandRaised);
     const message = !isHandRaised ? '🙋 Raised hand' : 'Lowered hand';
     addChatMessage('system', `${participantName}: ${message}`);
+    
+    if (webViewRef.current) {
+      webViewRef.current.injectJavaScript(`
+        if (window.toggleHandRaise) {
+          window.toggleHandRaise(${!isHandRaised});
+        }
+      `);
+    }
+  };
+
+  const toggleMute = () => {
+    setIsMuted(!isMuted);
+    if (webViewRef.current) {
+      webViewRef.current.injectJavaScript(`
+        if (window.toggleMute) {
+          window.toggleMute(${!isMuted});
+        }
+      `);
+    }
+  };
+
+  const toggleVideo = () => {
+    setIsVideoOff(!isVideoOff);
+    if (webViewRef.current) {
+      webViewRef.current.injectJavaScript(`
+        if (window.toggleVideo) {
+          window.toggleVideo(${!isVideoOff});
+        }
+      `);
+    }
   };
 
   const handleDisconnect = () => {
@@ -253,6 +215,36 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
     });
   };
 
+  const handleWebViewMessage = (event: any) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      console.log('📨 Message from WebView:', data);
+      
+      if (data.type === 'participant_joined') {
+        setParticipantCount(prev => prev + 1);
+        addChatMessage('system', `${data.name} joined the call`);
+      } else if (data.type === 'participant_left') {
+        setParticipantCount(prev => Math.max(1, prev - 1));
+        addChatMessage('system', `${data.name} left the call`);
+      } else if (data.type === 'chat_message') {
+        addChatMessage(data.sender, data.message);
+      } else if (data.type === 'connected') {
+        setIsConnected(true);
+        setLoading(false);
+        addChatMessage('system', '🎉 You joined the call!');
+      } else if (data.type === 'error') {
+        Alert.alert('Connection Error', data.message || 'Failed to connect');
+        setLoading(false);
+      } else if (data.type === 'participant_count') {
+        setParticipantCount(data.count);
+      } else if (data.type === 'log') {
+        console.log('WebView log:', data.message);
+      }
+    } catch (error) {
+      console.error('Error parsing WebView message:', error);
+    }
+  };
+
   const renderChatMessage = ({ item }: { item: ChatMessage }) => (
     <View style={[styles.chatMessageContainer, item.isOwn && styles.chatMessageOwn]}>
       <View style={[styles.chatMessageBubble, item.isOwn && styles.chatMessageBubbleOwn]}>
@@ -268,6 +260,383 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
       </View>
     </View>
   );
+
+  const getLiveKitHTML = () => {
+    const escapedToken = token.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+          <title>LiveKit Call</title>
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { 
+              background: #0a0a0a; 
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              height: 100vh;
+              overflow: hidden;
+              color: #fff;
+            }
+            #container {
+              display: flex;
+              flex-direction: column;
+              height: 100vh;
+              background: #0a0a0a;
+            }
+            #header {
+              background: #1a1a1a;
+              padding: 10px 16px;
+              text-align: center;
+              border-bottom: 1px solid #333;
+            }
+            #header h1 {
+              color: #fff;
+              font-size: 16px;
+              font-weight: 600;
+              margin: 0;
+            }
+            #video-grid {
+              flex: 1;
+              display: flex;
+              flex-wrap: wrap;
+              padding: 8px;
+              gap: 8px;
+              align-content: flex-start;
+              overflow-y: auto;
+              position: relative;
+            }
+            .video-box {
+              flex: 1;
+              min-width: calc(50% - 4px);
+              min-height: 150px;
+              background: #1a1a1a;
+              border-radius: 12px;
+              display: flex;
+              flex-direction: column;
+              justify-content: center;
+              align-items: center;
+              position: relative;
+              border: 2px solid #333;
+              aspect-ratio: 4/3;
+            }
+            .video-box.active {
+              border-color: #4F46E5;
+            }
+            .video-box .avatar {
+              width: 50px;
+              height: 50px;
+              border-radius: 25px;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              font-size: 20px;
+              color: #fff;
+              font-weight: bold;
+              margin-bottom: 6px;
+            }
+            .video-box .name {
+              color: #fff;
+              font-size: 13px;
+              font-weight: 500;
+            }
+            .video-box .status {
+              color: #4CAF50;
+              font-size: 11px;
+              margin-top: 2px;
+            }
+            .video-box .label {
+              position: absolute;
+              bottom: 8px;
+              left: 8px;
+              background: rgba(0,0,0,0.7);
+              padding: 2px 10px;
+              border-radius: 4px;
+              color: #fff;
+              font-size: 10px;
+            }
+            .video-box .hand-raise {
+              position: absolute;
+              top: 8px;
+              right: 8px;
+              font-size: 20px;
+            }
+            #status-bar {
+              background: rgba(0,0,0,0.8);
+              padding: 8px 16px;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              border-top: 1px solid #333;
+            }
+            #status-bar .live {
+              color: #FF4444;
+              font-size: 13px;
+              font-weight: 600;
+            }
+            #status-bar .duration {
+              color: #4CAF50;
+              font-size: 13px;
+              font-weight: 500;
+            }
+            #status-bar .participants {
+              color: #999;
+              font-size: 13px;
+            }
+            .connecting-overlay {
+              position: absolute;
+              top: 0;
+              left: 0;
+              right: 0;
+              bottom: 0;
+              background: rgba(0,0,0,0.8);
+              display: flex;
+              flex-direction: column;
+              justify-content: center;
+              align-items: center;
+              z-index: 100;
+            }
+            .spinner {
+              width: 40px;
+              height: 40px;
+              border: 4px solid #333;
+              border-top: 4px solid #4F46E5;
+              border-radius: 50%;
+              animation: spin 1s linear infinite;
+            }
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+            .connecting-text {
+              color: #fff;
+              margin-top: 16px;
+              font-size: 14px;
+            }
+          </style>
+        </head>
+        <body>
+          <div id="container">
+            <div id="header">
+              <h1>${title || 'Live Class'}</h1>
+            </div>
+            <div id="video-grid" style="position:relative;">
+              <div class="video-box active" id="local-video">
+                <div class="avatar" style="background:#4F46E5;">${participantName?.charAt(0).toUpperCase() || 'U'}</div>
+                <div class="name">${participantName || 'You'}</div>
+                <div class="status" id="local-status">● Connecting...</div>
+                <div class="label">You</div>
+                <div class="hand-raise" id="hand-raise-indicator" style="display:none;">🙋</div>
+              </div>
+              <div class="video-box" id="remote-video">
+                <div class="avatar" style="background:#6B7280;">${teacher?.charAt(0).toUpperCase() || 'T'}</div>
+                <div class="name">${teacher || 'Teacher'}</div>
+                <div class="status" id="teacher-status">● Waiting...</div>
+                <div class="label">Teacher</div>
+              </div>
+              <div class="connecting-overlay" id="connecting-overlay">
+                <div class="spinner"></div>
+                <div class="connecting-text" id="connecting-text">Connecting to LiveKit...</div>
+              </div>
+            </div>
+            <div id="status-bar">
+              <span class="live" id="live-status">🔴 Connecting...</span>
+              <span class="duration" id="duration-display">⏱ 00:00</span>
+              <span class="participants">👥 <span id="participant-count">1</span></span>
+            </div>
+          </div>
+
+          <!-- Load LiveKit from CDN -->
+          <script src="https://cdn.jsdelivr.net/npm/livekit-client@1.15.0/dist/livekit-client.umd.min.js"></script>
+          
+          <script>
+            // Configuration
+            const config = {
+              roomName: '${roomName}',
+              token: '${escapedToken}',
+              serverURL: '${serverURL}',
+              participantName: '${participantName}'
+            };
+
+            function sendMessageToRN(data) {
+              if (window.ReactNativeWebView) {
+                window.ReactNativeWebView.postMessage(JSON.stringify(data));
+              }
+            }
+
+            function sendLog(message) {
+              console.log('[WebView]', message);
+              sendMessageToRN({ type: 'log', message: message });
+            }
+
+            let room = null;
+            let localParticipant = null;
+            let isConnected = false;
+            let seconds = 0;
+            let durationInterval = null;
+            let participantCount = 1;
+
+            // Poll for LiveKitClient
+            let attempts = 0;
+            const maxAttempts = 30;
+
+            function checkLiveKit() {
+              attempts++;
+              sendLog('Checking for LiveKitClient (attempt ' + attempts + '/' + maxAttempts + ')');
+              
+              if (typeof LiveKitClient !== 'undefined') {
+                sendLog('✅ LiveKitClient found!');
+                startLiveKit(LiveKitClient);
+              } else if (window.LiveKitClient) {
+                sendLog('✅ LiveKitClient found on window!');
+                startLiveKit(window.LiveKitClient);
+              } else if (attempts < maxAttempts) {
+                sendLog('⏳ LiveKitClient not ready, retrying...');
+                setTimeout(checkLiveKit, 500);
+              } else {
+                sendLog('❌ LiveKitClient not found after ' + maxAttempts + ' attempts');
+                document.getElementById('connecting-text').textContent = '⚠️ SDK Load Failed';
+                document.getElementById('connecting-overlay').style.display = 'none';
+                sendMessageToRN({ type: 'error', message: 'LiveKit SDK not available' });
+              }
+            }
+
+            function startLiveKit(LiveKitClient) {
+              try {
+                sendLog('🚀 Starting LiveKit...');
+                sendLog('Room: ' + config.roomName);
+                sendLog('Server: ' + config.serverURL);
+
+                room = new LiveKitClient.Room({
+                  adaptiveStream: true,
+                  dynacast: true,
+                });
+
+                room.on('participantConnected', (participant) => {
+                  sendLog('👤 Participant connected: ' + participant.identity);
+                  participantCount++;
+                  document.getElementById('participant-count').textContent = participantCount;
+                  sendMessageToRN({
+                    type: 'participant_joined',
+                    name: participant.name || participant.identity
+                  });
+                });
+
+                room.on('participantDisconnected', (participant) => {
+                  sendLog('👤 Participant disconnected: ' + participant.identity);
+                  participantCount = Math.max(1, participantCount - 1);
+                  document.getElementById('participant-count').textContent = participantCount;
+                  sendMessageToRN({
+                    type: 'participant_left',
+                    name: participant.name || participant.identity
+                  });
+                });
+
+                room.on('connected', () => {
+                  sendLog('✅ Connected to LiveKit room!');
+                  isConnected = true;
+                  document.getElementById('live-status').textContent = '🔴 Live';
+                  document.getElementById('live-status').style.color = '#FF4444';
+                  document.getElementById('local-status').textContent = '● Connected';
+                  document.getElementById('local-status').style.color = '#4CAF50';
+                  document.getElementById('connecting-overlay').style.display = 'none';
+                  sendMessageToRN({ type: 'connected' });
+                  sendMessageToRN({ type: 'participant_count', count: participantCount });
+                  
+                  durationInterval = setInterval(() => {
+                    seconds++;
+                    const mins = String(Math.floor(seconds / 60)).padStart(2, '0');
+                    const secs = String(seconds % 60).padStart(2, '0');
+                    document.getElementById('duration-display').textContent = '⏱ ' + mins + ':' + secs;
+                  }, 1000);
+                });
+
+                room.on('disconnected', () => {
+                  sendLog('Disconnected from room');
+                  isConnected = false;
+                  document.getElementById('live-status').textContent = '🔴 Disconnected';
+                  document.getElementById('live-status').style.color = '#666';
+                  if (durationInterval) {
+                    clearInterval(durationInterval);
+                  }
+                });
+
+                // Connect
+                sendLog('Connecting with token...');
+                room.connect(config.serverURL, config.token)
+                  .then(() => {
+                    localParticipant = room.localParticipant;
+                    sendLog('✅ Connected successfully!');
+                    sendMessageToRN({ type: 'connected' });
+                  })
+                  .catch((error) => {
+                    sendLog('❌ Connection error: ' + error.message);
+                    document.getElementById('live-status').textContent = '⚠️ Failed';
+                    document.getElementById('connecting-overlay').style.display = 'none';
+                    sendMessageToRN({
+                      type: 'error',
+                      message: error.message || 'Failed to connect'
+                    });
+                  });
+
+                // Expose functions for RN to call
+                window.toggleMute = function(muted) {
+                  if (localParticipant) {
+                    localParticipant.setMicrophoneEnabled(!muted);
+                    sendLog('Microphone: ' + (muted ? 'Muted' : 'Unmuted'));
+                  }
+                };
+
+                window.toggleVideo = function(off) {
+                  if (localParticipant) {
+                    localParticipant.setCameraEnabled(!off);
+                    sendLog('Camera: ' + (off ? 'Off' : 'On'));
+                  }
+                };
+
+                window.toggleHandRaise = function(raised) {
+                  const indicator = document.getElementById('hand-raise-indicator');
+                  if (indicator) {
+                    indicator.style.display = raised ? 'block' : 'none';
+                  }
+                  sendLog('Hand raise: ' + (raised ? 'Raised' : 'Lowered'));
+                };
+
+                window.sendChatMessage = function(sender, message) {
+                  sendMessageToRN({
+                    type: 'chat_message',
+                    sender: sender,
+                    message: message
+                  });
+                  sendLog('Chat from ' + sender + ': ' + message);
+                };
+
+              } catch (error) {
+                sendLog('❌ Initialization error: ' + error.message);
+                document.getElementById('live-status').textContent = '⚠️ Error';
+                document.getElementById('connecting-overlay').style.display = 'none';
+                sendMessageToRN({
+                  type: 'error',
+                  message: error.message || 'Failed to initialize'
+                });
+              }
+            }
+
+            // Start checking for LiveKit
+            sendLog('Starting LiveKit check...');
+            setTimeout(checkLiveKit, 1000);
+
+            // Send initial participant count
+            setTimeout(() => {
+              document.getElementById('participant-count').textContent = '1';
+              sendMessageToRN({ type: 'participant_count', count: 1 });
+            }, 1000);
+          </script>
+        </body>
+      </html>
+    `;
+  };
 
   if (loading) {
     return (
@@ -286,7 +655,6 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0A0A0A" />
 
-      {/* WebView for LiveKit */}
       <View style={styles.webViewContainer}>
         <WebView
           ref={webViewRef}
@@ -294,10 +662,12 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
           style={styles.webView}
           javaScriptEnabled={true}
           domStorageEnabled={true}
-          onLoadStart={() => setLoading(true)}
-          onLoadEnd={() => setLoading(false)}
-          onError={() => {
-            setWebViewError(true);
+          onMessage={handleWebViewMessage}
+          onLoadStart={() => console.log('WebView loading...')}
+          onLoadEnd={() => console.log('WebView loaded')}
+          onError={(error) => {
+            console.error('WebView error:', error);
+            Alert.alert('Error', 'Failed to load video call');
             setLoading(false);
           }}
           startInLoadingState={true}
@@ -310,21 +680,18 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
         />
       </View>
 
-      {/* Native Controls Overlay */}
       <View style={styles.controlsOverlay}>
-        {/* Call Info Bar */}
         <View style={styles.callInfoBar}>
           <Text style={styles.callInfoTitle}>{title || 'Live Class'}</Text>
           <Text style={styles.callInfoDuration}>⏱ {formatDuration(callDuration)}</Text>
-          <Text style={styles.callInfoParticipants}>👥 2</Text>
+          <Text style={styles.callInfoParticipants}>👥 {participantCount}</Text>
         </View>
 
-        {/* Controls */}
         <View style={[styles.controlsContainer, !showControls && styles.controlsHidden]}>
           <View style={styles.controlsRow}>
             <TouchableOpacity
               style={[styles.controlButton, isMuted && styles.controlButtonActive]}
-              onPress={() => setIsMuted(!isMuted)}
+              onPress={toggleMute}
             >
               <Icon
                 name={isMuted ? 'mic-off' : 'mic'}
@@ -338,7 +705,7 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
 
             <TouchableOpacity
               style={[styles.controlButton, isVideoOff && styles.controlButtonActive]}
-              onPress={() => setIsVideoOff(!isVideoOff)}
+              onPress={toggleVideo}
             >
               <Icon
                 name={isVideoOff ? 'video-off' : 'video'}
@@ -382,7 +749,7 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
               onPress={() => setShowParticipants(true)}
             >
               <Icon name="users" size={22} color="#FFFFFF" />
-              <Text style={styles.controlButtonText}>2</Text>
+              <Text style={styles.controlButtonText}>{participantCount}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -396,12 +763,10 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
         </View>
       </View>
 
-      {/* Toggle Controls Button */}
       <TouchableOpacity style={styles.toggleControlsButton} onPress={toggleControls}>
         <Icon name={showControls ? 'chevron-down' : 'chevron-up'} size={20} color="#FFFFFF" />
       </TouchableOpacity>
 
-      {/* Chat Modal */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -444,7 +809,6 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
         </View>
       </Modal>
 
-      {/* Participants Modal */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -454,7 +818,7 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
         <View style={styles.participantsModalContainer}>
           <View style={styles.participantsModalContent}>
             <View style={styles.participantsHeader}>
-              <Text style={styles.participantsHeaderTitle}>Participants (2)</Text>
+              <Text style={styles.participantsHeaderTitle}>Participants ({participantCount})</Text>
               <TouchableOpacity onPress={() => setShowParticipants(false)}>
                 <Icon name="x" size={24} color="#FFFFFF" />
               </TouchableOpacity>
@@ -470,17 +834,21 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
                   <Text style={[styles.participantListName, styles.participantListNameLocal]}>
                     {participantName} (You)
                   </Text>
-                  <Text style={styles.participantListStatus}>🔵 Connected</Text>
+                  <Text style={styles.participantListStatus}>
+                    {isConnected ? '🔵 Connected' : 'Connecting...'}
+                  </Text>
                 </View>
                 {isHandRaised && <Text style={styles.handRaisedBadge}>🙋</Text>}
               </View>
               <View style={styles.participantListItem}>
                 <View style={styles.participantListAvatar}>
-                  <Text style={styles.participantListAvatarText}>T</Text>
+                  <Text style={styles.participantListAvatarText}>
+                    {teacher?.charAt(0).toUpperCase() || 'T'}
+                  </Text>
                 </View>
                 <View style={styles.participantListInfo}>
                   <Text style={styles.participantListName}>{teacher}</Text>
-                  <Text style={styles.participantListStatus}>🔴 Speaking</Text>
+                  <Text style={styles.participantListStatus}>🔴 Online</Text>
                 </View>
               </View>
             </ScrollView>
@@ -646,7 +1014,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // Chat Modal
   chatModalContainer: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.7)',
@@ -754,7 +1121,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // Participants Modal
   participantsModalContainer: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.7)',
