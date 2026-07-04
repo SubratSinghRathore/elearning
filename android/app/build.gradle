@@ -77,6 +77,14 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
+        packagingOptions {
+        pickFirst '**/libjsc.so'
+        pickFirst '**/libc++_shared.so'
+        pickFirst '**/libjsi.so'
+        pickFirst '**/libreact_nativemodule_core.so'
+        pickFirst '**/libturbomodulejsijni.so'
+    }
+
     namespace "com.riveyra"
     defaultConfig {
         applicationId "com.riveyra"
