@@ -1,4 +1,4 @@
-// screens/JoinLive.tsx
+// pages/JoinLive.tsx - Fixed back button
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -56,23 +56,35 @@ const JoinLive: React.FC<JoinLiveProps> = ({ navigation, route }) => {
   // Extract params from route
   const { sessionId, roomName, title, teacher, subject, batch } = route.params || {};
   
+  console.log('🔍 JoinLive - sessionId:', sessionId);
+  console.log('🔍 JoinLive - roomName:', roomName);
+  
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
+  const [previousJoined, setPreviousJoined] = useState(false);
   const [joinData, setJoinData] = useState<JoinResponse['data'] | null>(null);
-  const [countdown, setCountdown] = useState(5);
+  const [countdown, setCountdown] = useState(10);
 
   /**
    * Fetch join token when component mounts
-   * This calls the API to get the LiveKit token and room details
    */
   useEffect(() => {
+    // Check if roomName exists
+    if (!roomName) {
+      Alert.alert(
+        'Error', 
+        'No room name provided. Please go back and try again.',
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
+      setLoading(false);
+      return;
+    }
     fetchJoinToken();
-  }, [sessionId]);
+  }, [roomName]);
 
   /**
    * Countdown timer for auto-join
-   * Automatically joins the session after 5 seconds
    */
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -88,14 +100,12 @@ const JoinLive: React.FC<JoinLiveProps> = ({ navigation, route }) => {
 
   /**
    * Fetch join token from the server
-   * This is the first step - get the token to join the live class
    */
   const fetchJoinToken = async () => {
     try {
       setLoading(true);
-      console.log('📡 Fetching join token for session:', sessionId);
+      console.log('📡 Fetching join token for roomName:', roomName);
       
-      // API call to get join token
       const response = await api.post(`/live-classes/${roomName}/join`);
       
       console.log('✅ Join response:', response.data);
@@ -103,6 +113,8 @@ const JoinLive: React.FC<JoinLiveProps> = ({ navigation, route }) => {
       if (response.data.success) {
         setJoinData(response.data.data);
         console.log('🎫 Token received successfully');
+        console.log('🔑 Token:', response.data.data.liveKit.token.substring(0, 50) + '...');
+        console.log('🌐 Server URL:', response.data.data.liveKit.serverURL);
       } else {
         Alert.alert(
           'Error',
@@ -124,7 +136,6 @@ const JoinLive: React.FC<JoinLiveProps> = ({ navigation, route }) => {
 
   /**
    * Handle joining the live session
-   * This navigates to the video call screen with the token and room details
    */
   const handleJoinSession = () => {
     if (!joinData) {
@@ -139,8 +150,10 @@ const JoinLive: React.FC<JoinLiveProps> = ({ navigation, route }) => {
       console.log('🔑 Token:', joinData.liveKit.token.substring(0, 50) + '...');
       console.log('🌐 Server URL:', joinData.liveKit.serverURL);
 
-      // Navigate to the video call screen with all required data
-      // You'll need to implement the VideoCall screen separately
+      // Navigate to VideoCall screen with room name and token
+
+      // setPreviousJoined(true); // Mark as previously joined to prevent re-join attempts
+      // setJoining(true); // Reset joining state after navigation
       navigation.navigate('VideoCall', {
         roomName: joinData.liveKit.roomName,
         token: joinData.liveKit.token,
@@ -150,11 +163,35 @@ const JoinLive: React.FC<JoinLiveProps> = ({ navigation, route }) => {
         sessionId: joinData.liveClass.id,
         title: title || 'Live Class',
         teacher: teacher || 'Teacher',
+        subject: subject || 'Subject',
+        batch: batch || 'N/A',
       });
     } catch (error) {
       console.error('❌ Error joining session:', error);
       Alert.alert('Error', 'Failed to join the live session');
       setJoining(false);
+    }
+  };
+
+  /**
+   * Handle back navigation
+   */
+  const handleGoBack = () => {
+    if (joining) {
+      Alert.alert(
+        'Joining in Progress',
+        'You are currently joining the session. Are you sure you want to cancel?',
+        [
+          { text: 'Stay', style: 'cancel' },
+          { 
+            text: 'Leave', 
+            style: 'destructive',
+            onPress: () => navigation.goBack()
+          }
+        ]
+      );
+    } else {
+      navigation.goBack();
     }
   };
 
@@ -185,8 +222,8 @@ const JoinLive: React.FC<JoinLiveProps> = ({ navigation, route }) => {
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          disabled={joining}
+          onPress={handleGoBack}
+          disabled={false} // Always allow back button
         >
           <Icon name="arrow-left" size={24} color="#111827" />
         </TouchableOpacity>
@@ -251,6 +288,7 @@ const JoinLive: React.FC<JoinLiveProps> = ({ navigation, route }) => {
               <TouchableOpacity
                 style={styles.joinButton}
                 onPress={handleJoinSession}
+                disabled={joining}
               >
                 <Icon name="video" size={24} color="#FFFFFF" />
                 <Text style={styles.joinButtonText}>Join Now</Text>
@@ -258,17 +296,12 @@ const JoinLive: React.FC<JoinLiveProps> = ({ navigation, route }) => {
               <TouchableOpacity
                 style={styles.cancelButton}
                 onPress={() => navigation.goBack()}
+                disabled={joining}
               >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
             </>
-          ) : (
-            <View style={styles.joiningContainer}>
-              <ActivityIndicator size="large" color="#4F46E5" />
-              <Text style={styles.joiningText}>Joining session...</Text>
-              <Text style={styles.joiningSubText}>Please wait</Text>
-            </View>
-          )}
+          ) : null }
         </View>
 
         {/* Security Notice */}
@@ -322,6 +355,7 @@ const styles = StyleSheet.create({
 
   backButton: {
     padding: width * 0.02,
+    zIndex: 10,
   },
 
   headerTitle: {

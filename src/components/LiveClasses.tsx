@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Dimensions,
+  Modal,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import api from '../api/axios';
@@ -59,20 +60,6 @@ interface LiveSession {
   batch: Batch;
 }
 
-interface LiveClassesResponse {
-  sessions: LiveSession[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-}
-
-interface LiveClassesProps {
-  onJoinSession?: (sessionId: string, roomName: string) => void;
-}
-
 interface LiveClassesProps {
   navigation?: any;
   onJoinSession?: (sessionId: string, roomName: string) => void;
@@ -87,6 +74,8 @@ const LiveClasses: React.FC<LiveClassesProps> = ({ navigation, onJoinSession }) 
     total: 0,
     totalPages: 0,
   });
+  const [selectedSession, setSelectedSession] = useState<LiveSession | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
 
   useEffect(() => {
     fetchLiveClasses();
@@ -161,30 +150,40 @@ const LiveClasses: React.FC<LiveClassesProps> = ({ navigation, onJoinSession }) 
   };
 
   const handleJoinSession = (session: LiveSession) => {
+    setSelectedSession(session);
+    setModalVisible(true);
+  };
+
+  const confirmJoin = () => {
+    if (!selectedSession) return;
+    
+    setModalVisible(false);
+    
     if (onJoinSession) {
-      onJoinSession(session.id, session.roomName);
+      onJoinSession(selectedSession.id, selectedSession.roomName);
     } else if (navigation) {
-      // Navigate to video call screen
-      navigation.navigate("VideoCall", { 
-        sessionId: session.id, 
-        roomName: session.roomName,
-        title: session.title,
-        teacher: session.teacher.name,
+      // Navigate to JoinLive screen - PASS SESSION ID (not roomName)
+      navigation.navigate('JoinLive', {
+        sessionId: selectedSession.id, // This is the ID for the join API
+        roomName: selectedSession.roomName, // This is the room name for LiveKit
+        title: selectedSession.title,
+        teacher: selectedSession.teacher?.name || 'Teacher',
+        subject: selectedSession.subject?.name || 'Subject',
+        batch: selectedSession.batch?.name || 'N/A',
       });
     }
   };
 
   const renderSessionCard = (session: LiveSession) => {
     const isLive = session.status === 'LIVE';
-    const hasStarted = session.startedAt && new Date(session.startedAt) <= new Date();
-    const isActive = isLive || (hasStarted && !session.endedAt);
 
     return (
       <TouchableOpacity
         key={session.id}
-        style={[styles.sessionCard, isActive && styles.activeCard]}
-        onPress={() => handleJoinSession(session)}
+        style={[styles.sessionCard, isLive && styles.activeCard]}
+        onPress={() => isLive && handleJoinSession(session)}
         activeOpacity={0.7}
+        disabled={!isLive}
       >
         <View style={styles.cardHeader}>
           <View style={styles.statusContainer}>
@@ -195,6 +194,7 @@ const LiveClasses: React.FC<LiveClassesProps> = ({ navigation, onJoinSession }) 
           </View>
           {isLive && (
             <View style={styles.liveBadge}>
+              <View style={styles.liveDot} />
               <Text style={styles.liveText}>LIVE</Text>
             </View>
           )}
@@ -287,38 +287,109 @@ const LiveClasses: React.FC<LiveClassesProps> = ({ navigation, onJoinSession }) 
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4F46E5']} />
-      }
-    >
+    <>
+      <ScrollView
+        style={styles.container}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4F46E5']} />
+        }
+      >
+        {sessions.map((session) => renderSessionCard(session))}
 
-      {sessions.map((session) => renderSessionCard(session))}
+        {pagination.totalPages > 1 && (
+          <View style={styles.paginationContainer}>
+            <TouchableOpacity
+              style={[styles.pageButton, pagination.page === 1 && styles.pageButtonDisabled]}
+              onPress={() => fetchLiveClasses(pagination.page - 1)}
+              disabled={pagination.page === 1}
+            >
+              <Text style={styles.pageButtonText}>Previous</Text>
+            </TouchableOpacity>
+            <Text style={styles.pageInfo}>
+              Page {pagination.page} of {pagination.totalPages}
+            </Text>
+            <TouchableOpacity
+              style={[styles.pageButton, pagination.page === pagination.totalPages && styles.pageButtonDisabled]}
+              onPress={() => fetchLiveClasses(pagination.page + 1)}
+              disabled={pagination.page === pagination.totalPages}
+            >
+              <Text style={styles.pageButtonText}>Next</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </ScrollView>
 
-      {pagination.totalPages > 1 && (
-        <View style={styles.paginationContainer}>
-          <TouchableOpacity
-            style={[styles.pageButton, pagination.page === 1 && styles.pageButtonDisabled]}
-            onPress={() => fetchLiveClasses(pagination.page - 1)}
-            disabled={pagination.page === 1}
-          >
-            <Text style={styles.pageButtonText}>Previous</Text>
-          </TouchableOpacity>
-          <Text style={styles.pageInfo}>
-            Page {pagination.page} of {pagination.totalPages}
-          </Text>
-          <TouchableOpacity
-            style={[styles.pageButton, pagination.page === pagination.totalPages && styles.pageButtonDisabled]}
-            onPress={() => fetchLiveClasses(pagination.page + 1)}
-            disabled={pagination.page === pagination.totalPages}
-          >
-            <Text style={styles.pageButtonText}>Next</Text>
-          </TouchableOpacity>
+      {/* Join Confirmation Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalIconContainer}>
+                <Icon name="video" size={32} color="#4F46E5" />
+              </View>
+              <TouchableOpacity 
+                style={styles.modalClose}
+                onPress={() => setModalVisible(false)}
+              >
+                <Icon name="x" size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalTitle}>Join Live Class</Text>
+            <Text style={styles.modalSubtitle}>
+              You are about to join the live session
+            </Text>
+
+            {selectedSession && (
+              <View style={styles.modalDetails}>
+                <View style={styles.modalDetailRow}>
+                  <Icon name="book-open" size={18} color="#4F46E5" />
+                  <Text style={styles.modalDetailLabel}>Class:</Text>
+                  <Text style={styles.modalDetailValue}>{selectedSession.title}</Text>
+                </View>
+                <View style={styles.modalDetailRow}>
+                  <Icon name="user" size={18} color="#4F46E5" />
+                  <Text style={styles.modalDetailLabel}>Teacher:</Text>
+                  <Text style={styles.modalDetailValue}>{selectedSession.teacher?.name}</Text>
+                </View>
+                <View style={styles.modalDetailRow}>
+                  <Icon name="clock" size={18} color="#4F46E5" />
+                  <Text style={styles.modalDetailLabel}>Duration:</Text>
+                  <Text style={styles.modalDetailValue}>{selectedSession.durationMinutes} minutes</Text>
+                </View>
+                <View style={styles.modalDetailRow}>
+                  <Icon name="users" size={18} color="#4F46E5" />
+                  <Text style={styles.modalDetailLabel}>Participants:</Text>
+                  <Text style={styles.modalDetailValue}>{selectedSession.maxParticipants}</Text>
+                </View>
+              </View>
+            )}
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalCancelButton]}
+                onPress={() => setModalVisible(false)}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalJoinButton]}
+                onPress={confirmJoin}
+              >
+                <Icon name="video" size={20} color="#FFFFFF" />
+                <Text style={styles.modalJoinText}>Join Now</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
-      )}
-    </ScrollView>
+      </Modal>
+    </>
   );
 };
 
@@ -361,25 +432,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
     paddingHorizontal: 40,
-  },
-
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-  },
-
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1A1A1A',
-  },
-
-  headerCount: {
-    fontSize: 14,
-    color: '#999',
   },
 
   sessionCard: {
@@ -428,14 +480,24 @@ const styles = StyleSheet.create({
   },
 
   liveBadge: {
-    backgroundColor: '#FF1744',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEE2E2',
     paddingHorizontal: 10,
     paddingVertical: 3,
     borderRadius: 12,
   },
 
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#EF4444',
+    marginRight: 4,
+  },
+
   liveText: {
-    color: '#FFF',
+    color: '#EF4444',
     fontSize: 10,
     fontWeight: '700',
   },
@@ -571,6 +633,118 @@ const styles = StyleSheet.create({
   pageInfo: {
     fontSize: 14,
     color: '#666',
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: width * 0.05,
+  },
+
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: width * 0.06,
+    width: '100%',
+    maxWidth: 400,
+  },
+
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+
+  modalIconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#EEF2FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  modalClose: {
+    padding: 4,
+  },
+
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 4,
+  },
+
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 16,
+  },
+
+  modalDetails: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+
+  modalDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+
+  modalDetailLabel: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginLeft: 8,
+    width: 80,
+  },
+
+  modalDetailValue: {
+    fontSize: 14,
+    color: '#111827',
+    fontWeight: '500',
+    flex: 1,
+  },
+
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  modalCancelButton: {
+    backgroundColor: '#F3F4F6',
+  },
+
+  modalCancelText: {
+    color: '#6B7280',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+
+  modalJoinButton: {
+    backgroundColor: '#4F46E5',
+    flexDirection: 'row',
+    gap: 8,
+  },
+
+  modalJoinText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

@@ -1,10 +1,12 @@
-// pages/Stack.tsx
+// navigator/Stack.tsx
 import React, { useEffect, useState } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import OnBoarding from '../pages/OnBoarding';
 import Login from '../pages/Login';
 import BottomNavigator from './BottomNavigator';
+import JoinLive from '../pages/JoinLive';
+import VideoCall from '../pages/VideoCall';
 import { ActivityIndicator, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -12,6 +14,26 @@ export type RootStackParamList = {
   OnBoarding: undefined;
   Login: undefined;
   BottomTabs: undefined;
+  JoinLive: {
+    sessionId: string;
+    roomName: string;
+    title: string;
+    teacher: string;
+    subject: string;
+    batch: string;
+  };
+  VideoCall: {
+    roomName: string;
+    token: string;
+    serverURL: string;
+    participantName: string;
+    participantRole: string;
+    sessionId: string;
+    title: string;
+    teacher: string;
+    subject: string;
+    batch: string;
+  };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -49,7 +71,26 @@ const RootStack: React.FC = () => {
           <Stack.Screen name="Login" component={Login} />
         </>
       ) : (
-        <Stack.Screen name="BottomTabs" component={BottomNavigator} />
+        <>
+          <Stack.Screen name="BottomTabs" component={BottomNavigator} />
+          {/* Add JoinLive and VideoCall screens */}
+          <Stack.Screen 
+            name="JoinLive" 
+            component={JoinLive} 
+            options={{ 
+              headerShown: false,
+              animation: 'slide_from_right',
+            }}
+          />
+          <Stack.Screen 
+            name="VideoCall" 
+            component={VideoCall} 
+            options={{ 
+              headerShown: false,
+              animation: 'slide_from_right',
+            }}
+          />
+        </>
       )}
     </Stack.Navigator>
   );
