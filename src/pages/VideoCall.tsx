@@ -114,8 +114,7 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
       setParticipants([local]);
       setParticipantCount(1);
 
-      // Publish camera + mic so the teacher is actually visible/audible to others.
-      // (Previously these were force-disabled, which is why nothing ever showed up.)
+
       try {
         await local.setCameraEnabled(true);
         await local.setMicrophoneEnabled(true);
@@ -151,8 +150,6 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
       addChatMessage('system', `${participant.name || participant.identity} left the call`, true);
     });
 
-    // This is the key piece that was missing: store a reference to any subscribed
-    // camera track so we can actually render it with @livekit/react-native's <VideoTrack />.
     room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
       if (track.kind === Track.Kind.Video && publication.source === Track.Source.Camera) {
         setRemoteVideoTracks((prev) => ({
@@ -172,8 +169,6 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
       }
     });
 
-    // Keep the local preview in sync with the local participant's own published track,
-    // so toggling the camera button updates what's rendered.
     room.on(RoomEvent.LocalTrackPublished, (publication, participant) => {
       if (publication.source === Track.Source.Camera) {
         setLocalVideoTrack({ participant, publication });

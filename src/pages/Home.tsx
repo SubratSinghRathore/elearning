@@ -22,6 +22,7 @@ import api from "../api/axios";
 import LiveClasses from "../components/LiveClasses";
 import { useAuth } from "../context/AuthContext"
 import { requestPermissions } from '../utils/requestPermissions';
+import GroupStudy from "./groupStydy/GroupStudy";
 
 const { width, height } = Dimensions.get("window");
 
@@ -161,37 +162,6 @@ const Home = ({ navigation }: any) => {
     </TouchableOpacity>
   );
 
-  const renderRecommendation = ({ item }: any) => (
-    <TouchableOpacity
-      style={styles.recommendationCard}
-      onPress={() => navigation.navigate("CourseDetail", { courseId: item.id })}
-    >
-      <View style={styles.recommendationHeader}>
-        <Text style={styles.recommendationTitle}>{item.title}</Text>
-        {item.isEco && (
-          <View style={styles.ecoBadge}>
-            <Text style={styles.ecoBadgeText}>ECO</Text>
-          </View>
-        )}
-      </View>
-      <Text style={styles.recommendationSubtitle}>{item.subtitle}</Text>
-      <View style={styles.recommendationMeta}>
-        <View style={styles.metaItem}>
-          <Icon name="clock" size={14} color="#6B7280" />
-          <Text style={styles.metaText}>{item.duration}</Text>
-        </View>
-        <View style={styles.metaItem}>
-          <Icon name="file-text" size={14} color="#6B7280" />
-          <Text style={styles.metaText}>{item.lessons}</Text>
-        </View>
-        <View style={styles.metaItem}>
-          <Icon name="star" size={14} color="#6B7280" />
-          <Text style={styles.metaText}>{item.followers}</Text>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-
   if (loading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
@@ -247,40 +217,6 @@ const Home = ({ navigation }: any) => {
           </View>
         </View>
 
-        {/* Progress Card */}
-        <View style={styles.progressCard}>
-          <Text style={styles.progressText}>
-            Your learning journey is 65% complete this week. Keep it up!
-          </Text>
-
-          <View style={styles.currentCourseContainer}>
-            <View style={styles.currentCourseHeader}>
-              <Text style={styles.currentCourseLabel}>CURRENT COURSE</Text>
-              <TouchableOpacity onPress={() => navigation.navigate("CourseDetail", { courseId: "current" })}>
-                <Text style={styles.continueText}>Continue</Text>
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.courseTitle}>Intro to UX Design</Text>
-            <Text style={styles.courseModule}>
-              Module 4: User Personas & Journey Maps
-            </Text>
-
-            <View style={styles.progressBarContainer}>
-              <View style={styles.progressBar}>
-                <View style={[styles.progressFill, { width: "72%" }]} />
-              </View>
-              <Text style={styles.progressPercentage}>72%</Text>
-            </View>
-
-            <TouchableOpacity
-              style={styles.continueButton}
-              onPress={() => navigation.navigate("CourseDetail", { courseId: "current" })}
-            >
-              <Text style={styles.continueButtonText}>Continue Learning</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
         {/* Stats Section */}
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
@@ -315,45 +251,49 @@ const Home = ({ navigation }: any) => {
           contentContainerStyle={styles.categoriesListContent}
         />
 
+        {/* Group Study Section */}
+        <View style={styles.groupStudySection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Group Study</Text>
+            <TouchableOpacity onPress={() => navigation.navigate("AllGroupStudies")}>
+              <Text style={styles.seeAllText}>See all</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.groupStudyWrapper}>
+            <GroupStudy navigation={navigation} />
+          </View>
+        </View>
+
         {/* Live Classes Section */}
-        <View style={styles.liveClassesContainer}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Live Classes</Text>
-            <TouchableOpacity onPress={() => navigation.navigate("AllLiveClasses")}>
+            <TouchableOpacity onPress={() => navigation.navigate("Live")}>
               <Text style={styles.seeAllText}>See all</Text>
             </TouchableOpacity>
           </View>
           <LiveClasses navigation={navigation} />
-        </View>
-
-        {/* Recommended for You */}
-        <View style={styles.recommendedSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recommended for You</Text>
-          </View>
-          <FlatList
-            data={recommendations}
-            renderItem={renderRecommendation}
-            keyExtractor={(item) => item.id}
-            scrollEnabled={false}
-            style={styles.recommendationsList}
-          />
-        </View>
-
-        {/* Logout Button */}
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Icon name="log-out" size={20} color="#EF4444" />
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
 
         {/* Extra bottom space */}
-        <View style={styles.bottomSpace} />
+        <View style={styles.securityNotice}>
+          <Text style={styles.securityText}>MSSPL | Version 1.0.0</Text>
+        </View>
       </ScrollView>
-    </SafeAreaView>
+    </SafeAreaView >
   );
 };
 
 const styles = StyleSheet.create({
+  groupStudySection: {
+    marginTop: height * 0.01,
+    marginBottom: height * 0.02,
+  },
+  groupStudyWrapper: {
+    paddingHorizontal: width * 0.02,
+  },
+  groupStudyContainer: {
+    marginTop: height * 0.01,
+    marginBottom: height * 0.02,
+  },
   container: {
     flex: 1,
     backgroundColor: "#F5F6FF",
@@ -594,37 +534,6 @@ const styles = StyleSheet.create({
     color: "#111827",
     textAlign: "center",
   },
-  liveClassesContainer: {
-    marginBottom: height * 0.02,
-  },
-  recommendedSection: {
-    marginTop: height * 0.01,
-  },
-  recommendationsList: {
-    paddingHorizontal: width * 0.05,
-  },
-  recommendationCard: {
-    backgroundColor: "#FFFFFF",
-    padding: width * 0.04,
-    borderRadius: 12,
-    marginBottom: height * 0.015,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  recommendationHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: height * 0.005,
-  },
-  recommendationTitle: {
-    fontSize: width * 0.035,
-    fontWeight: "bold",
-    color: "#111827",
-  },
   ecoBadge: {
     backgroundColor: "#10B981",
     paddingHorizontal: width * 0.02,
@@ -665,15 +574,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginTop: height * 0.015,
   },
-  logoutText: {
-    color: "#EF4444",
-    fontSize: width * 0.04,
-    fontWeight: "600",
-    marginLeft: width * 0.02,
-  },
-  bottomSpace: {
-    height: height * 0.025,
-  },
+  securityNotice: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  securityText: { fontSize: width * 0.03, color: '#6B7280', marginLeft: width * 0.02 },
+
 });
 
 export default Home;

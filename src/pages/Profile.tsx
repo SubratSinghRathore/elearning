@@ -182,9 +182,9 @@ const Profile = () => {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Profile</Text>
-        <TouchableOpacity>
+        {/* <TouchableOpacity>
           <Icon name="more-horizontal" size={24} color="#1A1A1A" />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
 
       {/* Profile Card */}
