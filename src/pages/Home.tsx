@@ -1,5 +1,5 @@
 // screens/HomeScreen.tsx
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -21,6 +21,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import api from "../api/axios";
 import LiveClasses from "../components/LiveClasses";
 import { useAuth } from "../context/AuthContext"
+import { requestPermissions } from '../utils/requestPermissions';
 
 const { width, height } = Dimensions.get("window");
 
@@ -31,6 +32,27 @@ const Home = ({ navigation }: any) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { logout, user } = useAuth();
+
+  useEffect(() => {
+    checkPermissions();
+  }, []);
+
+  const checkPermissions = async () => {
+    try {
+      const granted = await requestPermissions();
+
+      if (granted) {
+        console.log('✅ Camera & Microphone permissions granted');
+      } else {
+        Alert.alert(
+          'Permission Required',
+          'Please allow Camera and Microphone permissions to join live classes.'
+        );
+      }
+    } catch (error) {
+      console.log('Permission Error:', error);
+    }
+  };
 
   // Mock data for categories and recommendations
   const popularCategories = [
@@ -64,7 +86,7 @@ const Home = ({ navigation }: any) => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      
+
       const isLoggedIn = await AsyncStorage.getItem("isLoggedIn");
       if (!isLoggedIn) {
         navigation.replace("Login");
@@ -128,7 +150,7 @@ const Home = ({ navigation }: any) => {
   };
 
   const renderCategory = ({ item }: any) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={styles.categoryCard}
       onPress={() => navigation.navigate("CategoryCourses", { categoryId: item.id })}
     >
@@ -140,7 +162,7 @@ const Home = ({ navigation }: any) => {
   );
 
   const renderRecommendation = ({ item }: any) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={styles.recommendationCard}
       onPress={() => navigation.navigate("CourseDetail", { courseId: item.id })}
     >
@@ -182,7 +204,7 @@ const Home = ({ navigation }: any) => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F5F6FF" />
-      
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -198,20 +220,20 @@ const Home = ({ navigation }: any) => {
             </Text>
           </View>
           <View style={styles.headerActions}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.iconButton}
               onPress={() => navigation.navigate("Notifications")}
             >
               <Icon name="bell" size={22} color="#111827" />
               <View style={styles.notificationBadge} />
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.profileButton}
               onPress={() => navigation.navigate("Profile")}
             >
               {userData?.personalInfo?.profileImage ? (
-                <Image 
-                  source={{ uri: userData.personalInfo.profileImage }} 
+                <Image
+                  source={{ uri: userData.personalInfo.profileImage }}
                   style={styles.profileImage}
                 />
               ) : (
@@ -230,7 +252,7 @@ const Home = ({ navigation }: any) => {
           <Text style={styles.progressText}>
             Your learning journey is 65% complete this week. Keep it up!
           </Text>
-          
+
           <View style={styles.currentCourseContainer}>
             <View style={styles.currentCourseHeader}>
               <Text style={styles.currentCourseLabel}>CURRENT COURSE</Text>
@@ -242,15 +264,15 @@ const Home = ({ navigation }: any) => {
             <Text style={styles.courseModule}>
               Module 4: User Personas & Journey Maps
             </Text>
-            
+
             <View style={styles.progressBarContainer}>
               <View style={styles.progressBar}>
                 <View style={[styles.progressFill, { width: "72%" }]} />
               </View>
               <Text style={styles.progressPercentage}>72%</Text>
             </View>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={styles.continueButton}
               onPress={() => navigation.navigate("CourseDetail", { courseId: "current" })}
             >

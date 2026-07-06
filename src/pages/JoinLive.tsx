@@ -1,4 +1,4 @@
-// pages/JoinLive.tsx - Fixed back button
+// pages/JoinLive.tsx
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -53,7 +53,6 @@ interface JoinResponse {
 }
 
 const JoinLive: React.FC<JoinLiveProps> = ({ navigation, route }) => {
-  // Extract params from route
   const { sessionId, roomName, title, teacher, subject, batch } = route.params || {};
   
   console.log('🔍 JoinLive - sessionId:', sessionId);
@@ -62,30 +61,18 @@ const JoinLive: React.FC<JoinLiveProps> = ({ navigation, route }) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
-  const [previousJoined, setPreviousJoined] = useState(false);
   const [joinData, setJoinData] = useState<JoinResponse['data'] | null>(null);
-  const [countdown, setCountdown] = useState(10);
+  const [countdown, setCountdown] = useState(5);
 
-  /**
-   * Fetch join token when component mounts
-   */
   useEffect(() => {
-    // Check if roomName exists
     if (!roomName) {
-      Alert.alert(
-        'Error', 
-        'No room name provided. Please go back and try again.',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
+      Alert.alert('Error', 'No room name provided', [{ text: 'OK', onPress: () => navigation.goBack() }]);
       setLoading(false);
       return;
     }
     fetchJoinToken();
   }, [roomName]);
 
-  /**
-   * Countdown timer for auto-join
-   */
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (joinData && !joining && countdown > 0) {
@@ -98,14 +85,9 @@ const JoinLive: React.FC<JoinLiveProps> = ({ navigation, route }) => {
     return () => clearTimeout(timer);
   }, [countdown, joinData, joining]);
 
-  /**
-   * Fetch join token from the server
-   */
   const fetchJoinToken = async () => {
     try {
       setLoading(true);
-      console.log('📡 Fetching join token for roomName:', roomName);
-      
       const response = await api.post(`/live-classes/${roomName}/join`);
       
       console.log('✅ Join response:', response.data);
@@ -113,30 +95,19 @@ const JoinLive: React.FC<JoinLiveProps> = ({ navigation, route }) => {
       if (response.data.success) {
         setJoinData(response.data.data);
         console.log('🎫 Token received successfully');
-        console.log('🔑 Token:', response.data.data.liveKit.token.substring(0, 50) + '...');
-        console.log('🌐 Server URL:', response.data.data.liveKit.serverURL);
       } else {
-        Alert.alert(
-          'Error',
-          response.data.message || 'Failed to join live class'
-        );
+        Alert.alert('Error', response.data.message || 'Failed to join live class');
         navigation.goBack();
       }
     } catch (error: any) {
       console.error('❌ Error fetching join token:', error);
-      Alert.alert(
-        'Error',
-        error.response?.data?.message || 'Something went wrong. Please try again.'
-      );
+      Alert.alert('Error', error.response?.data?.message || 'Something went wrong');
       navigation.goBack();
     } finally {
       setLoading(false);
     }
   };
 
-  /**
-   * Handle joining the live session
-   */
   const handleJoinSession = () => {
     if (!joinData) {
       Alert.alert('Error', 'No join data available');
@@ -146,14 +117,8 @@ const JoinLive: React.FC<JoinLiveProps> = ({ navigation, route }) => {
     try {
       setJoining(true);
       console.log('🚀 Joining live session...');
-      console.log('📋 Room Name:', joinData.liveKit.roomName);
-      console.log('🔑 Token:', joinData.liveKit.token.substring(0, 50) + '...');
-      console.log('🌐 Server URL:', joinData.liveKit.serverURL);
-
-      // Navigate to VideoCall screen with room name and token
-
-      // setPreviousJoined(true); // Mark as previously joined to prevent re-join attempts
-      // setJoining(true); // Reset joining state after navigation
+      
+      // Navigate to VideoCall with LiveKit credentials
       navigation.navigate('VideoCall', {
         roomName: joinData.liveKit.roomName,
         token: joinData.liveKit.token,
@@ -173,31 +138,17 @@ const JoinLive: React.FC<JoinLiveProps> = ({ navigation, route }) => {
     }
   };
 
-  /**
-   * Handle back navigation
-   */
   const handleGoBack = () => {
     if (joining) {
-      Alert.alert(
-        'Joining in Progress',
-        'You are currently joining the session. Are you sure you want to cancel?',
-        [
-          { text: 'Stay', style: 'cancel' },
-          { 
-            text: 'Leave', 
-            style: 'destructive',
-            onPress: () => navigation.goBack()
-          }
-        ]
-      );
+      Alert.alert('Joining in Progress', 'Are you sure you want to cancel?', [
+        { text: 'Stay', style: 'cancel' },
+        { text: 'Leave', style: 'destructive', onPress: () => navigation.goBack() }
+      ]);
     } else {
       navigation.goBack();
     }
   };
 
-  /**
-   * Render loading state
-   */
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -211,29 +162,19 @@ const JoinLive: React.FC<JoinLiveProps> = ({ navigation, route }) => {
     );
   }
 
-  /**
-   * Render the join screen
-   */
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F5F6FF" />
       
-      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={handleGoBack}
-          disabled={false} // Always allow back button
-        >
+        <TouchableOpacity style={styles.backButton} onPress={handleGoBack} disabled={false}>
           <Icon name="arrow-left" size={24} color="#111827" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Join Live Class</Text>
         <View style={styles.headerPlaceholder} />
       </View>
 
-      {/* Main Content */}
       <View style={styles.content}>
-        {/* Session Details Card */}
         <View style={styles.sessionCard}>
           <View style={styles.sessionHeader}>
             <View style={styles.liveBadge}>
@@ -265,7 +206,6 @@ const JoinLive: React.FC<JoinLiveProps> = ({ navigation, route }) => {
           </View>
         </View>
 
-        {/* Participant Info */}
         <View style={styles.participantCard}>
           <Text style={styles.participantLabel}>You are joining as</Text>
           <Text style={styles.participantName}>
@@ -278,38 +218,32 @@ const JoinLive: React.FC<JoinLiveProps> = ({ navigation, route }) => {
           </View>
         </View>
 
-        {/* Join Button with Countdown */}
         <View style={styles.joinContainer}>
           {!joining ? (
             <>
               <Text style={styles.joinInfo}>
                 You will be joined automatically in {countdown}s
               </Text>
-              <TouchableOpacity
-                style={styles.joinButton}
-                onPress={handleJoinSession}
-                disabled={joining}
-              >
+              <TouchableOpacity style={styles.joinButton} onPress={handleJoinSession} disabled={joining}>
                 <Icon name="video" size={24} color="#FFFFFF" />
                 <Text style={styles.joinButtonText}>Join Now</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => navigation.goBack()}
-                disabled={joining}
-              >
+              <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.goBack()} disabled={joining}>
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
             </>
-          ) : null }
+          ) : (
+            <View style={styles.joiningContainer}>
+              <ActivityIndicator size="large" color="#4F46E5" />
+              <Text style={styles.joiningText}>Joining session...</Text>
+              <Text style={styles.joiningSubText}>Please wait</Text>
+            </View>
+          )}
         </View>
 
-        {/* Security Notice */}
         <View style={styles.securityNotice}>
           <Icon name="shield" size={16} color="#6B7280" />
-          <Text style={styles.securityText}>
-            Your connection is encrypted and secure
-          </Text>
+          <Text style={styles.securityText}>Your connection is encrypted and secure</Text>
         </View>
       </View>
     </SafeAreaView>
@@ -317,243 +251,41 @@ const JoinLive: React.FC<JoinLiveProps> = ({ navigation, route }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F6FF',
-  },
-
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: width * 0.05,
-  },
-
-  loadingText: {
-    fontSize: width * 0.045,
-    fontWeight: '600',
-    color: '#111827',
-    marginTop: height * 0.02,
-  },
-
-  loadingSubText: {
-    fontSize: width * 0.035,
-    color: '#6B7280',
-    marginTop: height * 0.005,
-  },
-
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: width * 0.04,
-    paddingVertical: height * 0.02,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-
-  backButton: {
-    padding: width * 0.02,
-    zIndex: 10,
-  },
-
-  headerTitle: {
-    fontSize: width * 0.045,
-    fontWeight: '600',
-    color: '#111827',
-  },
-
-  headerPlaceholder: {
-    width: width * 0.08,
-  },
-
-  content: {
-    flex: 1,
-    paddingHorizontal: width * 0.05,
-    paddingTop: height * 0.02,
-  },
-
-  sessionCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: width * 0.05,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-
-  sessionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: height * 0.015,
-  },
-
-  liveBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FEE2E2',
-    paddingHorizontal: width * 0.03,
-    paddingVertical: height * 0.005,
-    borderRadius: 12,
-  },
-
-  liveDot: {
-    width: width * 0.02,
-    height: width * 0.02,
-    borderRadius: width * 0.01,
-    backgroundColor: '#EF4444',
-    marginRight: width * 0.015,
-  },
-
-  liveBadgeText: {
-    color: '#EF4444',
-    fontSize: width * 0.03,
-    fontWeight: '600',
-  },
-
-  sessionStatus: {
-    color: '#10B981',
-    fontSize: width * 0.03,
-    fontWeight: '600',
-  },
-
-  sessionTitle: {
-    fontSize: width * 0.05,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: height * 0.02,
-  },
-
-  sessionDetails: {
-    gap: height * 0.01,
-  },
-
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-
-  detailText: {
-    fontSize: width * 0.035,
-    color: '#374151',
-    marginLeft: width * 0.025,
-  },
-
-  participantCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: width * 0.05,
-    marginTop: height * 0.02,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-
-  participantLabel: {
-    fontSize: width * 0.03,
-    color: '#6B7280',
-    marginBottom: height * 0.005,
-  },
-
-  participantName: {
-    fontSize: width * 0.05,
-    fontWeight: '700',
-    color: '#111827',
-  },
-
-  roleBadge: {
-    marginTop: height * 0.01,
-    backgroundColor: '#EEF2FF',
-    paddingHorizontal: width * 0.04,
-    paddingVertical: height * 0.005,
-    borderRadius: 12,
-  },
-
-  roleBadgeText: {
-    color: '#4F46E5',
-    fontSize: width * 0.03,
-    fontWeight: '600',
-  },
-
-  joinContainer: {
-    marginTop: height * 0.03,
-    alignItems: 'center',
-  },
-
-  joinInfo: {
-    fontSize: width * 0.035,
-    color: '#6B7280',
-    marginBottom: height * 0.015,
-  },
-
-  joinButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#4F46E5',
-    width: '100%',
-    paddingVertical: height * 0.018,
-    borderRadius: 12,
-    shadowColor: '#4F46E5',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-
-  joinButtonText: {
-    color: '#FFFFFF',
-    fontSize: width * 0.045,
-    fontWeight: '600',
-    marginLeft: width * 0.025,
-  },
-
-  cancelButton: {
-    marginTop: height * 0.015,
-    paddingVertical: height * 0.015,
-  },
-
-  cancelButtonText: {
-    color: '#6B7280',
-    fontSize: width * 0.035,
-  },
-
-  joiningContainer: {
-    alignItems: 'center',
-  },
-
-  joiningText: {
-    fontSize: width * 0.045,
-    fontWeight: '600',
-    color: '#111827',
-    marginTop: height * 0.02,
-  },
-
-  joiningSubText: {
-    fontSize: width * 0.035,
-    color: '#6B7280',
-    marginTop: height * 0.005,
-  },
-
-  securityNotice: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: height * 0.03,
-  },
-
-  securityText: {
-    fontSize: width * 0.03,
-    color: '#6B7280',
-    marginLeft: width * 0.02,
-  },
+  container: { flex: 1, backgroundColor: '#F5F6FF' },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: width * 0.05 },
+  loadingText: { fontSize: width * 0.045, fontWeight: '600', color: '#111827', marginTop: height * 0.02 },
+  loadingSubText: { fontSize: width * 0.035, color: '#6B7280', marginTop: height * 0.005 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: width * 0.04, paddingVertical: height * 0.02, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
+  backButton: { padding: width * 0.02, zIndex: 10 },
+  headerTitle: { fontSize: width * 0.045, fontWeight: '600', color: '#111827' },
+  headerPlaceholder: { width: width * 0.08 },
+  content: { flex: 1, paddingHorizontal: width * 0.05, paddingTop: height * 0.02 },
+  sessionCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: width * 0.05, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 3 },
+  sessionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: height * 0.015 },
+  liveBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEE2E2', paddingHorizontal: width * 0.03, paddingVertical: height * 0.005, borderRadius: 12 },
+  liveDot: { width: width * 0.02, height: width * 0.02, borderRadius: width * 0.01, backgroundColor: '#EF4444', marginRight: width * 0.015 },
+  liveBadgeText: { color: '#EF4444', fontSize: width * 0.03, fontWeight: '600' },
+  sessionStatus: { color: '#10B981', fontSize: width * 0.03, fontWeight: '600' },
+  sessionTitle: { fontSize: width * 0.05, fontWeight: '700', color: '#111827', marginBottom: height * 0.02 },
+  sessionDetails: { gap: height * 0.01 },
+  detailRow: { flexDirection: 'row', alignItems: 'center' },
+  detailText: { fontSize: width * 0.035, color: '#374151', marginLeft: width * 0.025 },
+  participantCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: width * 0.05, marginTop: height * 0.02, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 3 },
+  participantLabel: { fontSize: width * 0.03, color: '#6B7280', marginBottom: height * 0.005 },
+  participantName: { fontSize: width * 0.05, fontWeight: '700', color: '#111827' },
+  roleBadge: { marginTop: height * 0.01, backgroundColor: '#EEF2FF', paddingHorizontal: width * 0.04, paddingVertical: height * 0.005, borderRadius: 12 },
+  roleBadgeText: { color: '#4F46E5', fontSize: width * 0.03, fontWeight: '600' },
+  joinContainer: { marginTop: height * 0.03, alignItems: 'center' },
+  joinInfo: { fontSize: width * 0.035, color: '#6B7280', marginBottom: height * 0.015 },
+  joinButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#4F46E5', width: '100%', paddingVertical: height * 0.018, borderRadius: 12, shadowColor: '#4F46E5', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 },
+  joinButtonText: { color: '#FFFFFF', fontSize: width * 0.045, fontWeight: '600', marginLeft: width * 0.025 },
+  cancelButton: { marginTop: height * 0.015, paddingVertical: height * 0.015 },
+  cancelButtonText: { color: '#6B7280', fontSize: width * 0.035 },
+  joiningContainer: { alignItems: 'center' },
+  joiningText: { fontSize: width * 0.045, fontWeight: '600', color: '#111827', marginTop: height * 0.02 },
+  joiningSubText: { fontSize: width * 0.035, color: '#6B7280', marginTop: height * 0.005 },
+  securityNotice: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: height * 0.03 },
+  securityText: { fontSize: width * 0.03, color: '#6B7280', marginLeft: width * 0.02 },
 });
 
 export default JoinLive;
