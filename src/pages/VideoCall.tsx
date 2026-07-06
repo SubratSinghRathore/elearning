@@ -1,5 +1,5 @@
 // pages/VideoCall.tsx - Full featured LiveKit video call
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   SafeAreaView,
   Text,
@@ -18,7 +18,16 @@ import {
   KeyboardAvoidingView,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
-import { Room, RoomEvent, Participant, Track, VideoTrack, RemoteParticipant, LocalParticipant } from 'livekit-client';
+import {
+  Room,
+  RoomEvent,
+  Participant,
+  Track,
+  RemoteParticipant,
+  LocalParticipant,
+  TrackPublication,
+} from 'livekit-client';
+import { VideoTrack as LKVideoTrack, AudioSession } from '@livekit/react-native';
 
 const { width, height } = Dimensions.get('window');
 
@@ -49,6 +58,12 @@ interface ChatMessage {
   isSystem?: boolean;
 }
 
+// Minimal shape @livekit/react-native's <VideoTrack /> needs to render a tile.
+interface VideoTrackInfo {
+  participant: Participant;
+  publication: TrackPublication;
+}
+
 const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
   const {
     roomName,
@@ -63,17 +78,6 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
     batch,
   } = route.params || {};
 
-  console.log('Room Name:', roomName);
-  console.log('Token:', token);
-  console.log('Server URL:', serverURL);
-  console.log('Participant Name:', participantName);
-  console.log('Participant Role:', participantRole);
-  console.log('Session ID:', sessionId);
-  console.log('Title:', title);
-  console.log('Teacher:', teacher);
-  console.log('Subject:', subject);
-  console.log('Batch:', batch);
-
   const [status, setStatus] = useState('Connecting...');
   const [isConnected, setIsConnected] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -86,114 +90,118 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
   const [chatInput, setChatInput] = useState('');
   const [showParticipants, setShowParticipants] = useState(false);
   const [participants, setParticipants] = useState<Participant[]>([]);
-  const [localParticipant, setLocalParticipant] = useState<LocalParticipant | null>(null);
   const [loading, setLoading] = useState(true);
   const [participantCount, setParticipantCount] = useState(1);
   const [connectionError, setConnectionError] = useState<string | null>(null);
 
-  const [room] = useState(() => new Room());
+  // Actual renderable video tracks, keyed by participant identity.
+  const [remoteVideoTracks, setRemoteVideoTracks] = useState<Record<string, VideoTrackInfo>>({});
+  const [localVideoTrack, setLocalVideoTrack] = useState<VideoTrackInfo | null>(null);
 
-  // Call duration timer
-  // useEffect(() => {
-  //   let timer: any;
-  //   if (isConnected) {
-  //     timer = setInterval(() => {
-  //       setCallDuration((prev) => prev + 1);
-  //     }, 1000);
-  //   }
-  //   return () => clearInterval(timer);
-  // }, [isConnected]);
-  
+  const [room] = useState(() => new Room());
 
   // Room event listeners
   useEffect(() => {
+    // Required on React Native: sets up the audio session (speaker/earpiece routing, etc).
+    AudioSession.startAudioSession();
 
-    // Set up room event listeners
-    room.on(RoomEvent.Connected, () => {
-      console.log('✅ Connected');
+    room.on(RoomEvent.Connected, async () => {
       setStatus('Connected');
       setIsConnected(true);
       setLoading(false);
 
       const local = room.localParticipant;
-      setLocalParticipant(local);
       setParticipants([local]);
       setParticipantCount(1);
 
-      // Enable camera and microphone
-      local.setCameraEnabled(false);
-      local.setMicrophoneEnabled(false);
-
+      // Publish camera + mic so the teacher is actually visible/audible to others.
+      // (Previously these were force-disabled, which is why nothing ever showed up.)
+      try {
+        await local.setCameraEnabled(true);
+        await local.setMicrophoneEnabled(true);
+      } catch (e) {
+        console.log('Failed to enable camera/mic:', e);
+      }
     });
 
     room.on(RoomEvent.Disconnected, () => {
-      console.log('❌ Disconnected');
       setStatus('Disconnected');
       setIsConnected(false);
       setLoading(false);
     });
 
     room.on(RoomEvent.ConnectionStateChanged, (state) => {
-      console.log('State :', state);
       setStatus(state);
     });
 
     room.on(RoomEvent.ParticipantConnected, (participant: RemoteParticipant) => {
-      console.log('👤 Participant joined:', participant.identity);
-      setParticipants(prev => [...prev, participant]);
-      setParticipantCount(prev => prev + 1);
-      addChatMessage('system', `${participant.name || participant.identity} joined the call`);
+      setParticipants((prev) => [...prev, participant]);
+      setParticipantCount((prev) => prev + 1);
+      addChatMessage('system', `${participant.name || participant.identity} joined the call`, true);
     });
 
     room.on(RoomEvent.ParticipantDisconnected, (participant: RemoteParticipant) => {
-      console.log('👤 Participant left:', participant.identity);
-      setParticipants(prev => prev.filter(p => p.identity !== participant.identity));
-      setParticipantCount(prev => Math.max(1, prev - 1));
-      addChatMessage('system', `${participant.name || participant.identity} left the call`);
+      setParticipants((prev) => prev.filter((p) => p.identity !== participant.identity));
+      setParticipantCount((prev) => Math.max(1, prev - 1));
+      setRemoteVideoTracks((prev) => {
+        const next = { ...prev };
+        delete next[participant.identity];
+        return next;
+      });
+      addChatMessage('system', `${participant.name || participant.identity} left the call`, true);
     });
 
-    // room.on(RoomEvent.LocalParticipantPublishedTrack, (publication) => {
-    //   console.log('📹 Local track published:', publication.kind);
-    // });
-
-    room.on(RoomEvent.TrackPublished, (publication, participant) => {
-      Alert.alert(
-        'Track Published',
-        `Participant: ${participant.identity}\nKind: ${publication.kind}`
-      );
-    });
-
+    // This is the key piece that was missing: store a reference to any subscribed
+    // camera track so we can actually render it with @livekit/react-native's <VideoTrack />.
     room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
-      Alert.alert(
-        'Track Subscribed',
-        `Participant: ${participant.identity}\nPublication: ${publication.kind}\nTrack: ${track.kind}`
-      );
+      if (track.kind === Track.Kind.Video && publication.source === Track.Source.Camera) {
+        setRemoteVideoTracks((prev) => ({
+          ...prev,
+          [participant.identity]: { participant, publication },
+        }));
+      }
     });
 
     room.on(RoomEvent.TrackUnsubscribed, (track, publication, participant) => {
-      Alert.alert(
-        'Track Unsubscribed',
-        `Participant: ${participant.identity}\nKind: ${publication.kind}`
-      );
+      if (track.kind === Track.Kind.Video && publication.source === Track.Source.Camera) {
+        setRemoteVideoTracks((prev) => {
+          const next = { ...prev };
+          delete next[participant.identity];
+          return next;
+        });
+      }
+    });
+
+    // Keep the local preview in sync with the local participant's own published track,
+    // so toggling the camera button updates what's rendered.
+    room.on(RoomEvent.LocalTrackPublished, (publication, participant) => {
+      if (publication.source === Track.Source.Camera) {
+        setLocalVideoTrack({ participant, publication });
+      }
+    });
+
+    room.on(RoomEvent.LocalTrackUnpublished, (publication, participant) => {
+      if (publication.source === Track.Source.Camera) {
+        setLocalVideoTrack(null);
+      }
     });
 
     connectRoom();
 
     return () => {
       room.disconnect();
+      AudioSession.stopAudioSession();
     };
   }, []);
 
   const connectRoom = async () => {
     try {
       await room.connect(serverURL, token);
-      console.log('Connected Successfully');
     } catch (e) {
       console.log(e);
       setConnectionError('Unable to connect');
       setLoading(false);
       Alert.alert('Error', 'Unable to connect to the call');
-      // navigation.goBack();
     }
   };
 
@@ -221,16 +229,16 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const toggleMute = () => {
+  const toggleMute = async () => {
     if (room.localParticipant) {
-      room.localParticipant.setMicrophoneEnabled(isMuted);
+      await room.localParticipant.setMicrophoneEnabled(isMuted);
       setIsMuted(!isMuted);
     }
   };
 
-  const toggleVideo = () => {
+  const toggleVideo = async () => {
     if (room.localParticipant) {
-      room.localParticipant.setCameraEnabled(isVideoOff);
+      await room.localParticipant.setCameraEnabled(isVideoOff);
       setIsVideoOff(!isVideoOff);
     }
   };
@@ -238,25 +246,21 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
   const toggleHandRaise = () => {
     setIsHandRaised(!isHandRaised);
     const message = !isHandRaised ? '🙋 Raised hand' : 'Lowered hand';
-    addChatMessage('system', `${participantName}: ${message}`);
+    addChatMessage('system', `${participantName}: ${message}`, true);
   };
 
   const leaveRoom = () => {
-    Alert.alert(
-      'End Call',
-      'Are you sure you want to leave the call?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Leave',
-          style: 'destructive',
-          onPress: () => {
-            room.disconnect();
-            navigation.navigate('BottomTabs');
-          },
+    Alert.alert('End Call', 'Are you sure you want to leave the call?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Leave',
+        style: 'destructive',
+        onPress: () => {
+          room.disconnect();
+          navigation.navigate('BottomTabs');
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const formatTime = (date: Date) => {
@@ -338,6 +342,10 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
     );
   }
 
+  const remoteParticipants = participants.filter(
+    (p) => p.identity !== room.localParticipant?.identity
+  );
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#111" />
@@ -346,22 +354,35 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
       <View style={styles.videoGrid}>
         {/* Remote Participants */}
         <ScrollView style={styles.remoteParticipantsContainer}>
-          {participants.filter(p => p.identity !== room.localParticipant?.identity).length > 0 ? (
-            participants
-              .filter(p => p.identity !== room.localParticipant?.identity)
-              .map((participant) => (
+          {remoteParticipants.length > 0 ? (
+            remoteParticipants.map((participant) => {
+              const videoInfo = remoteVideoTracks[participant.identity];
+              return (
                 <View key={participant.identity} style={styles.remoteParticipantWrapper}>
-                  <View style={styles.remoteVideoPlaceholder}>
-                    <Text style={styles.remoteAvatarText}>
-                      {(participant.name || participant.identity)?.charAt(0).toUpperCase() || 'U'}
-                    </Text>
-                    <Text style={styles.remoteNameText}>
-                      {participant.name || participant.identity}
-                    </Text>
-                    {participant.isSpeaking && <View style={styles.speakingIndicator} />}
-                  </View>
+                  {videoInfo ? (
+                    <LKVideoTrack
+                      trackRef={{
+                        participant: videoInfo.participant,
+                        publication: videoInfo.publication,
+                        source: Track.Source.Camera,
+                      }}
+                      style={styles.remoteVideoView}
+                      objectFit="cover"
+                    />
+                  ) : (
+                    <View style={styles.remoteVideoPlaceholder}>
+                      <Text style={styles.remoteAvatarText}>
+                        {(participant.name || participant.identity)?.charAt(0).toUpperCase() || 'U'}
+                      </Text>
+                      <Text style={styles.remoteNameText}>
+                        {participant.name || participant.identity}
+                      </Text>
+                    </View>
+                  )}
+                  {participant.isSpeaking && <View style={styles.speakingIndicator} />}
                 </View>
-              ))
+              );
+            })
           ) : (
             <View style={styles.waitingContainer}>
               <ActivityIndicator size="large" color="#4F46E5" />
@@ -372,25 +393,31 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
 
         {/* Local Participant (small overlay) */}
         <View style={styles.localVideoContainer}>
-          <View style={styles.localVideoPlaceholder}>
-            <Text style={styles.localAvatarText}>
-              {participantName?.charAt(0).toUpperCase() || 'U'}
-            </Text>
-            <View style={styles.localInfoRow}>
-              <Text style={styles.localNameText}>You</Text>
-              {isMuted && <Icon name="mic-off" size={12} color="#FF4444" />}
-              {isHandRaised && <Text style={styles.handRaisedIndicator}>🙋</Text>}
+          {localVideoTrack && !isVideoOff ? (
+            <LKVideoTrack
+              trackRef={{
+                participant: localVideoTrack.participant,
+                publication: localVideoTrack.publication,
+                source: Track.Source.Camera,
+              }}
+              style={styles.localVideoView}
+              objectFit="cover"
+              mirror
+            />
+          ) : (
+            <View style={styles.localVideoPlaceholder}>
+              <Text style={styles.localAvatarText}>
+                {participantName?.charAt(0).toUpperCase() || 'U'}
+              </Text>
             </View>
+          )}
+          <View style={styles.localInfoRow}>
+            <Text style={styles.localNameText}>You</Text>
+            {isMuted && <Icon name="mic-off" size={12} color="#FF4444" />}
+            {isHandRaised && <Text style={styles.handRaisedIndicator}>🙋</Text>}
           </View>
         </View>
       </View>
-
-      {/* Call Info Bar */}
-      {/* <View style={styles.callInfoBar}>
-        <Text style={styles.callInfoTitle}>{title || 'Live Class'}</Text>
-        <Text style={styles.callInfoDuration}>⏱ {formatDuration(callDuration)}</Text>
-        <Text style={styles.callInfoParticipants}>👥 {participantCount}</Text>
-      </View> */}
 
       {/* Controls */}
       <View style={[styles.controlsContainer, !showControls && styles.controlsHidden]}>
@@ -399,14 +426,8 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
             style={[styles.controlButton, isMuted && styles.controlButtonActive]}
             onPress={toggleMute}
           >
-            <Icon
-              name={isMuted ? 'mic-off' : 'mic'}
-              size={22}
-              color={isMuted ? '#FF4444' : '#FFFFFF'}
-            />
-            <Text style={styles.controlButtonText}>
-              {isMuted ? 'Unmute' : 'Mute'}
-            </Text>
+            <Icon name={isMuted ? 'mic-off' : 'mic'} size={22} color={isMuted ? '#FF4444' : '#FFFFFF'} />
+            <Text style={styles.controlButtonText}>{isMuted ? 'Unmute' : 'Mute'}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -418,29 +439,18 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
               size={22}
               color={isVideoOff ? '#FF4444' : '#FFFFFF'}
             />
-            <Text style={styles.controlButtonText}>
-              {isVideoOff ? 'Video On' : 'Video Off'}
-            </Text>
+            <Text style={styles.controlButtonText}>{isVideoOff ? 'Video On' : 'Video Off'}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.controlButton, isHandRaised && styles.controlButtonActive]}
             onPress={toggleHandRaise}
           >
-            <Icon
-              name="upload"
-              size={22}
-              color={isHandRaised ? '#FFD700' : '#FFFFFF'}
-            />
-            <Text style={styles.controlButtonText}>
-              {isHandRaised ? 'Lower' : 'Raise'}
-            </Text>
+            <Icon name="upload" size={22} color={isHandRaised ? '#FFD700' : '#FFFFFF'} />
+            <Text style={styles.controlButtonText}>{isHandRaised ? 'Lower' : 'Raise'}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.controlButton}
-            onPress={() => setShowChat(true)}
-          >
+          <TouchableOpacity style={styles.controlButton} onPress={() => setShowChat(true)}>
             <Icon name="message-square" size={22} color="#FFFFFF" />
             <Text style={styles.controlButtonText}>Chat</Text>
             {chatMessages.length > 0 && (
@@ -450,18 +460,12 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.controlButton}
-            onPress={() => setShowParticipants(true)}
-          >
+          <TouchableOpacity style={styles.controlButton} onPress={() => setShowParticipants(true)}>
             <Icon name="users" size={22} color="#FFFFFF" />
             <Text style={styles.controlButtonText}>{participantCount}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.controlButton, styles.endCallButton]}
-            onPress={leaveRoom}
-          >
+          <TouchableOpacity style={[styles.controlButton, styles.endCallButton]} onPress={leaveRoom}>
             <Icon name="phone-off" size={22} color="#FFFFFF" />
             <Text style={styles.controlButtonText}>Leave</Text>
           </TouchableOpacity>
@@ -469,12 +473,7 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
       </View>
 
       {/* Chat Modal */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={showChat}
-        onRequestClose={() => setShowChat(false)}
-      >
+      <Modal animationType="slide" transparent visible={showChat} onRequestClose={() => setShowChat(false)}>
         <View style={styles.chatModalContainer}>
           <View style={styles.chatModalContent}>
             <View style={styles.chatHeader}>
@@ -514,7 +513,7 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
       {/* Participants Modal */}
       <Modal
         animationType="slide"
-        transparent={true}
+        transparent
         visible={showParticipants}
         onRequestClose={() => setShowParticipants(false)}
       >
@@ -526,9 +525,7 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
                 <Icon name="x" size={24} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
-            <ScrollView style={styles.participantsList}>
-              {participants.map(renderParticipantItem)}
-            </ScrollView>
+            <ScrollView style={styles.participantsList}>{participants.map(renderParticipantItem)}</ScrollView>
           </View>
         </View>
       </Modal>
@@ -537,87 +534,19 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#111',
-  },
-
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-
-  loadingText: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginTop: 20,
-  },
-
-  loadingSubText: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 8,
-  },
-
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-
-  errorTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginTop: 16,
-  },
-
-  errorText: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 8,
-    marginBottom: 24,
-    textAlign: 'center',
-  },
-
-  retryButton: {
-    backgroundColor: '#4F46E5',
-    paddingHorizontal: 40,
-    paddingVertical: 12,
-    borderRadius: 12,
-    marginBottom: 8,
-  },
-
-  retryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-
-  goBackButton: {
-    paddingHorizontal: 40,
-    paddingVertical: 12,
-  },
-
-  goBackButtonText: {
-    color: '#6B7280',
-    fontSize: 16,
-  },
-
-  videoGrid: {
-    flex: 1,
-    padding: 8,
-    position: 'relative',
-  },
-
-  remoteParticipantsContainer: {
-    flex: 1,
-  },
-
+  container: { flex: 1, backgroundColor: '#111' },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 },
+  loadingText: { fontSize: 20, fontWeight: '600', color: '#FFFFFF', marginTop: 20 },
+  loadingSubText: { fontSize: 14, color: '#666', marginTop: 8 },
+  errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 },
+  errorTitle: { fontSize: 20, fontWeight: '600', color: '#FFFFFF', marginTop: 16 },
+  errorText: { fontSize: 14, color: '#666', marginTop: 8, marginBottom: 24, textAlign: 'center' },
+  retryButton: { backgroundColor: '#4F46E5', paddingHorizontal: 40, paddingVertical: 12, borderRadius: 12, marginBottom: 8 },
+  retryButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
+  goBackButton: { paddingHorizontal: 40, paddingVertical: 12 },
+  goBackButtonText: { color: '#6B7280', fontSize: 16 },
+  videoGrid: { flex: 1, padding: 8, position: 'relative' },
+  remoteParticipantsContainer: { flex: 1 },
   remoteParticipantWrapper: {
     width: '100%',
     height: 200,
@@ -628,32 +557,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-
-  remoteVideoPlaceholder: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  remoteAvatarText: {
-    fontSize: 40,
-    fontWeight: '700',
-    color: '#4F46E5',
-  },
-
-  remoteNameText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    marginTop: 8,
-  },
-
+  remoteVideoView: { width: '100%', height: '100%' },
+  remoteVideoPlaceholder: { justifyContent: 'center', alignItems: 'center' },
+  remoteAvatarText: { fontSize: 40, fontWeight: '700', color: '#4F46E5' },
+  remoteNameText: { color: '#FFFFFF', fontSize: 14, marginTop: 8 },
   speakingIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     backgroundColor: '#4CAF50',
-    marginTop: 4,
   },
-
   localVideoContainer: {
     position: 'absolute',
     bottom: 80,
@@ -669,25 +585,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-
-  localVideoPlaceholder: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  localAvatarText: {
-    fontSize: 30,
-    fontWeight: '700',
-    color: '#4F46E5',
-  },
-
+  localVideoView: { width: '100%', height: '100%', position: 'absolute' },
+  localVideoPlaceholder: { justifyContent: 'center', alignItems: 'center' },
+  localAvatarText: { fontSize: 30, fontWeight: '700', color: '#4F46E5' },
   localInfoRow: {
+    position: 'absolute',
+    bottom: 4,
+    left: 4,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginTop: 4,
   },
-
   localNameText: {
     color: '#FFFFFF',
     fontSize: 11,
@@ -697,105 +605,16 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 4,
   },
-
-  handRaisedIndicator: {
-    fontSize: 14,
-  },
-
-  waitingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-
-  waitingText: {
-    color: '#666',
-    fontSize: 16,
-    marginTop: 16,
-  },
-
-  callInfoBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.1)',
-  },
-
-  callInfoTitle: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-
-  callInfoDuration: {
-    color: '#4CAF50',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-
-  callInfoParticipants: {
-    color: '#666',
-    fontSize: 14,
-  },
-
-  controlsContainer: {
-    backgroundColor: 'rgba(0,0,0,0.85)',
-    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
-    paddingTop: 12,
-  },
-
-  controlsHidden: {
-    display: 'none',
-  },
-
-  controlsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-  },
-
-  controlButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 6,
-    position: 'relative',
-  },
-
-  controlButtonActive: {
-    opacity: 0.8,
-  },
-
-  controlButtonText: {
-    color: '#FFFFFF',
-    fontSize: 9,
-    marginTop: 2,
-  },
-
-  endCallButton: {
-    backgroundColor: '#EF4444',
-    borderRadius: 30,
-    width: 50,
-    height: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  toggleControlsButton: {
-    position: 'absolute',
-    top: 20,
-    right: 20,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    padding: 8,
-    borderRadius: 20,
-    zIndex: 20,
-  },
-
+  handRaisedIndicator: { fontSize: 14 },
+  waitingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40 },
+  waitingText: { color: '#666', fontSize: 16, marginTop: 16 },
+  controlsContainer: { backgroundColor: 'rgba(0,0,0,0.85)', paddingBottom: Platform.OS === 'ios' ? 34 : 16, paddingTop: 12 },
+  controlsHidden: { display: 'none' },
+  controlsRow: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingHorizontal: 8 },
+  controlButton: { alignItems: 'center', justifyContent: 'center', padding: 6, position: 'relative' },
+  controlButtonActive: { opacity: 0.8 },
+  controlButtonText: { color: '#FFFFFF', fontSize: 9, marginTop: 2 },
+  endCallButton: { backgroundColor: '#EF4444', borderRadius: 30, width: 50, height: 50, justifyContent: 'center', alignItems: 'center' },
   chatBadge: {
     position: 'absolute',
     top: -2,
@@ -808,27 +627,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 4,
   },
-
-  chatBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-
-  // Chat Modal Styles
-  chatModalContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'flex-end',
-  },
-
-  chatModalContent: {
-    backgroundColor: '#1A1A1A',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    height: height * 0.6,
-  },
-
+  chatBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: '700' },
+  chatModalContainer: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
+  chatModalContent: { backgroundColor: '#1A1A1A', borderTopLeftRadius: 20, borderTopRightRadius: 20, height: height * 0.6 },
   chatHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -837,106 +638,21 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.1)',
   },
-
-  chatHeaderTitle: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-
-  chatMessagesList: {
-    padding: 16,
-    flexGrow: 1,
-  },
-
-  chatMessageContainer: {
-    marginBottom: 8,
-    alignItems: 'flex-start',
-  },
-
-  chatMessageOwn: {
-    alignItems: 'flex-end',
-  },
-
-  chatMessageBubble: {
-    backgroundColor: '#2A2A2A',
-    padding: 10,
-    borderRadius: 12,
-    maxWidth: '80%',
-  },
-
-  chatMessageBubbleOwn: {
-    backgroundColor: '#4F46E5',
-  },
-
-  chatMessageSender: {
-    color: '#818CF8',
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-
-  chatMessageText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-  },
-
-  chatSystemMessage: {
-    color: '#666',
-    fontSize: 12,
-    fontStyle: 'italic',
-    textAlign: 'center',
-  },
-
-  chatMessageTime: {
-    color: '#666',
-    fontSize: 10,
-    marginTop: 4,
-    alignSelf: 'flex-end',
-  },
-
-  chatInputContainer: {
-    flexDirection: 'row',
-    padding: 12,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.1)',
-    backgroundColor: '#1A1A1A',
-  },
-
-  chatInput: {
-    flex: 1,
-    backgroundColor: '#2A2A2A',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    color: '#FFFFFF',
-    fontSize: 14,
-    marginRight: 8,
-  },
-
-  chatSendButton: {
-    backgroundColor: '#4F46E5',
-    borderRadius: 25,
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  // Participants Modal Styles
-  participantsModalContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'flex-end',
-  },
-
-  participantsModalContent: {
-    backgroundColor: '#1A1A1A',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    height: height * 0.5,
-  },
-
+  chatHeaderTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '600' },
+  chatMessagesList: { padding: 16, flexGrow: 1 },
+  chatMessageContainer: { marginBottom: 8, alignItems: 'flex-start' },
+  chatMessageOwn: { alignItems: 'flex-end' },
+  chatMessageBubble: { backgroundColor: '#2A2A2A', padding: 10, borderRadius: 12, maxWidth: '80%' },
+  chatMessageBubbleOwn: { backgroundColor: '#4F46E5' },
+  chatMessageSender: { color: '#818CF8', fontSize: 12, fontWeight: '600', marginBottom: 2 },
+  chatMessageText: { color: '#FFFFFF', fontSize: 14 },
+  chatSystemMessage: { color: '#666', fontSize: 12, fontStyle: 'italic', textAlign: 'center' },
+  chatMessageTime: { color: '#666', fontSize: 10, marginTop: 4, alignSelf: 'flex-end' },
+  chatInputContainer: { flexDirection: 'row', padding: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)', backgroundColor: '#1A1A1A' },
+  chatInput: { flex: 1, backgroundColor: '#2A2A2A', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8, color: '#FFFFFF', fontSize: 14, marginRight: 8 },
+  chatSendButton: { backgroundColor: '#4F46E5', borderRadius: 25, width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
+  participantsModalContainer: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
+  participantsModalContent: { backgroundColor: '#1A1A1A', borderTopLeftRadius: 20, borderTopRightRadius: 20, height: height * 0.5 },
   participantsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -945,17 +661,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.1)',
   },
-
-  participantsHeaderTitle: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-
-  participantsList: {
-    padding: 16,
-  },
-
+  participantsHeaderTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '600' },
+  participantsList: { padding: 16 },
   participantListItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -963,7 +670,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.05)',
   },
-
   participantListAvatar: {
     width: 40,
     height: 40,
@@ -973,40 +679,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
-
-  participantListAvatarLocal: {
-    backgroundColor: '#4F46E5',
-  },
-
-  participantListAvatarText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-
-  participantListInfo: {
-    flex: 1,
-  },
-
-  participantListName: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-
-  participantListNameLocal: {
-    color: '#818CF8',
-  },
-
-  participantListStatus: {
-    color: '#4CAF50',
-    fontSize: 12,
-  },
-
-  handRaisedBadge: {
-    fontSize: 20,
-    marginLeft: 8,
-  },
+  participantListAvatarLocal: { backgroundColor: '#4F46E5' },
+  participantListAvatarText: { color: '#FFFFFF', fontSize: 18, fontWeight: '600' },
+  participantListInfo: { flex: 1 },
+  participantListName: { color: '#FFFFFF', fontSize: 14, fontWeight: '500' },
+  participantListNameLocal: { color: '#818CF8' },
+  participantListStatus: { color: '#4CAF50', fontSize: 12 },
+  handRaisedBadge: { fontSize: 20, marginLeft: 8 },
 });
 
 export default VideoCall;

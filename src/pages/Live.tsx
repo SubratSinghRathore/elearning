@@ -92,6 +92,12 @@ const Live: React.FC<{ navigation: any }> = ({ navigation }) => {
     total: 0,
     totalPages: 1,
   });
+  const [paginationScheduled, setPaginationScheduled] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 1,
+  });
   const [selectedSession, setSelectedSession] = useState<LiveSession | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [joining, setJoining] = useState(false);
@@ -103,14 +109,40 @@ const Live: React.FC<{ navigation: any }> = ({ navigation }) => {
     try {
       setLoading(true);
       console.log('📡 Fetching live sessions...');
-      
+
       const response = await api.get(`/live-classes?status=LIVE&page=${page}&limit=20`);
-      
-      console.log('✅ Live sessions response:', response.data);
-      
+
       if (response.data.success) {
         setSessions(response.data.data.sessions || []);
         setPagination(response.data.data.pagination);
+      } else {
+        Alert.alert('Error', response.data.message || 'Failed to fetch live classes');
+      }
+    } catch (error: any) {
+      console.error('❌ Error fetching live sessions:', error);
+      Alert.alert(
+        'Error',
+        error.response?.data?.message || 'Something went wrong. Please try again.'
+      );
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const fetchScheduledSessions = async (page = 1) => {
+    try {
+      setLoading(true);
+      console.log('📡 Fetching live sessions...');
+
+      const response = await api.get(`/live-classes?status=SCHEDULED&page=${page}&limit=20`);
+
+      if (response.data.success) {
+        setSessions(prev => [
+          ...prev,
+          ...(response.data.data.sessions || []),
+        ]);
+        setPaginationScheduled(response.data.data.pagination);
       } else {
         Alert.alert('Error', response.data.message || 'Failed to fetch live classes');
       }
@@ -132,6 +164,7 @@ const Live: React.FC<{ navigation: any }> = ({ navigation }) => {
   useFocusEffect(
     useCallback(() => {
       fetchLiveSessions(1);
+      fetchScheduledSessions(1);
     }, [])
   );
 
@@ -141,6 +174,7 @@ const Live: React.FC<{ navigation: any }> = ({ navigation }) => {
   const onRefresh = () => {
     setRefreshing(true);
     fetchLiveSessions(1);
+    fetchScheduledSessions(1);
   };
 
   /**
@@ -156,7 +190,7 @@ const Live: React.FC<{ navigation: any }> = ({ navigation }) => {
    */
   const confirmJoin = () => {
     if (!selectedSession) return;
-    
+
     setModalVisible(false);
     navigation.navigate('JoinLive', {
       sessionId: selectedSession.id,
@@ -232,12 +266,12 @@ const Live: React.FC<{ navigation: any }> = ({ navigation }) => {
     const end = new Date(endsAt);
     const now = new Date();
     const diff = end.getTime() - now.getTime();
-    
+
     if (diff <= 0) return 'Ended';
-    
+
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    
+
     if (hours > 0) {
       return `${hours}h ${minutes}m remaining`;
     }
@@ -251,7 +285,7 @@ const Live: React.FC<{ navigation: any }> = ({ navigation }) => {
     const isLive = item.status === 'LIVE';
     const isUpcoming = item.status === 'UPCOMING';
     const isEnded = item.status === 'ENDED';
-    
+
     return (
       <TouchableOpacity
         style={[styles.sessionCard, isLive && styles.liveCard]}
@@ -276,7 +310,7 @@ const Live: React.FC<{ navigation: any }> = ({ navigation }) => {
 
         {/* Title */}
         <Text style={styles.sessionTitle}>{item.title}</Text>
-        
+
         {/* Description */}
         <Text style={styles.sessionDescription} numberOfLines={2}>
           {item.description}
@@ -381,7 +415,7 @@ const Live: React.FC<{ navigation: any }> = ({ navigation }) => {
     if (pagination.totalPages <= 1) {
       return null;
     }
-    
+
     return (
       <View style={styles.paginationContainer}>
         <TouchableOpacity
@@ -424,10 +458,10 @@ const Live: React.FC<{ navigation: any }> = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F5F6FF" />
-      
+
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
@@ -455,7 +489,7 @@ const Live: React.FC<{ navigation: any }> = ({ navigation }) => {
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
           <Text style={[styles.statNumber, styles.upcomingStat]}>
-            {sessions.filter(s => s.status === 'UPCOMING').length}
+            {sessions.filter(s => s.status === 'SCHEDULED').length}
           </Text>
           <Text style={styles.statLabel}>Upcoming</Text>
         </View>
@@ -504,7 +538,7 @@ const Live: React.FC<{ navigation: any }> = ({ navigation }) => {
               <View style={styles.modalIconContainer}>
                 <Icon name="video" size={32} color="#4F46E5" />
               </View>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.modalClose}
                 onPress={() => setModalVisible(false)}
               >
