@@ -18,7 +18,7 @@ import {
   KeyboardAvoidingView,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
-import { Room, RoomEvent, Participant, Track, RemoteParticipant, LocalParticipant } from 'livekit-client';
+import { Room, RoomEvent, Participant, Track, VideoTrack, RemoteParticipant, LocalParticipant } from 'livekit-client';
 
 const { width, height } = Dimensions.get('window');
 
@@ -91,33 +91,19 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
   const [participantCount, setParticipantCount] = useState(1);
   const [connectionError, setConnectionError] = useState<string | null>(null);
 
-  const controlsTimeoutRef = useRef<any>(null);
   const [room] = useState(() => new Room());
 
-  // Auto-hide controls after 5 seconds
-  useEffect(() => {
-    if (isConnected) {
-      controlsTimeoutRef.current = setTimeout(() => {
-        setShowControls(false);
-      }, 5000);
-    }
-    return () => {
-      if (controlsTimeoutRef.current) {
-        clearTimeout(controlsTimeoutRef.current);
-      }
-    };
-  }, [isConnected]);
-
   // Call duration timer
-  useEffect(() => {
-    let timer: any;
-    if (isConnected) {
-      timer = setInterval(() => {
-        setCallDuration((prev) => prev + 1);
-      }, 1000);
-    }
-    return () => clearInterval(timer);
-  }, [isConnected]);
+  // useEffect(() => {
+  //   let timer: any;
+  //   if (isConnected) {
+  //     timer = setInterval(() => {
+  //       setCallDuration((prev) => prev + 1);
+  //     }, 1000);
+  //   }
+  //   return () => clearInterval(timer);
+  // }, [isConnected]);
+  
 
   // Room event listeners
   useEffect(() => {
@@ -128,16 +114,16 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
       setStatus('Connected');
       setIsConnected(true);
       setLoading(false);
-      
+
       const local = room.localParticipant;
       setLocalParticipant(local);
       setParticipants([local]);
       setParticipantCount(1);
-      
+
       // Enable camera and microphone
       local.setCameraEnabled(false);
       local.setMicrophoneEnabled(false);
-      
+
     });
 
     room.on(RoomEvent.Disconnected, () => {
@@ -169,6 +155,27 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
     // room.on(RoomEvent.LocalParticipantPublishedTrack, (publication) => {
     //   console.log('📹 Local track published:', publication.kind);
     // });
+
+    room.on(RoomEvent.TrackPublished, (publication, participant) => {
+      Alert.alert(
+        'Track Published',
+        `Participant: ${participant.identity}\nKind: ${publication.kind}`
+      );
+    });
+
+    room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
+      Alert.alert(
+        'Track Subscribed',
+        `Participant: ${participant.identity}\nPublication: ${publication.kind}\nTrack: ${track.kind}`
+      );
+    });
+
+    room.on(RoomEvent.TrackUnsubscribed, (track, publication, participant) => {
+      Alert.alert(
+        'Track Unsubscribed',
+        `Participant: ${participant.identity}\nKind: ${publication.kind}`
+      );
+    });
 
     connectRoom();
 
@@ -212,18 +219,6 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const toggleControls = () => {
-    setShowControls(!showControls);
-    if (controlsTimeoutRef.current) {
-      clearTimeout(controlsTimeoutRef.current);
-    }
-    if (!showControls) {
-      controlsTimeoutRef.current = setTimeout(() => {
-        setShowControls(false);
-      }, 5000);
-    }
   };
 
   const toggleMute = () => {
@@ -391,11 +386,11 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
       </View>
 
       {/* Call Info Bar */}
-      <View style={styles.callInfoBar}>
+      {/* <View style={styles.callInfoBar}>
         <Text style={styles.callInfoTitle}>{title || 'Live Class'}</Text>
         <Text style={styles.callInfoDuration}>⏱ {formatDuration(callDuration)}</Text>
         <Text style={styles.callInfoParticipants}>👥 {participantCount}</Text>
-      </View>
+      </View> */}
 
       {/* Controls */}
       <View style={[styles.controlsContainer, !showControls && styles.controlsHidden]}>
@@ -472,11 +467,6 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
           </TouchableOpacity>
         </View>
       </View>
-
-      {/* Toggle Controls Button */}
-      <TouchableOpacity style={styles.toggleControlsButton} onPress={toggleControls}>
-        <Icon name={showControls ? 'chevron-down' : 'chevron-up'} size={20} color="#FFFFFF" />
-      </TouchableOpacity>
 
       {/* Chat Modal */}
       <Modal

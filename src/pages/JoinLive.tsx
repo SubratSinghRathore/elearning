@@ -74,7 +74,7 @@ const JoinLive: React.FC<JoinLiveProps> = ({ navigation, route }) => {
   }, [roomName]);
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: any;
     if (joinData && !joining && countdown > 0) {
       timer = setTimeout(() => {
         setCountdown(countdown - 1);
