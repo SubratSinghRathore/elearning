@@ -17,12 +17,14 @@ import {
   Share,
   Platform,
   PermissionsAndroid,
+  Linking,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
-import ContentCard from '..//components/ContentCard';
+import ContentCard from '../../components/ContentCard';
 import { WebView } from 'react-native-webview';
 import Video from 'react-native-video';
 import RNFS from 'react-native-fs';
+import api from '../../api/axios';
 
 const { width, height } = Dimensions.get('window');
 
@@ -61,7 +63,7 @@ const getFileUrl = (path: string): string => {
 };
 
 const Content: React.FC<ContentProps> = ({ navigation }) => {
-  const [materials, setMaterials] = useState<Material[]>([]);
+  const [allMaterials, setAllMaterials] = useState<Material[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -75,12 +77,13 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
   const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
   const [paused, setPaused] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
 
   const materialTypes = ['ALL', 'IMAGE', 'PDF', 'DOCUMENT', 'VIDEO', 'AUDIO'];
 
   useEffect(() => {
     fetchMaterials();
-  }, [selectedType]);
+  }, []);
 
   const fetchMaterials = async (reset: boolean = true) => {
     try {
@@ -89,37 +92,64 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
         setPage(1);
       }
 
-      let url = `https://elearning.mssplonline.in/api/v1/materials?status=PUBLISHED&page=${reset ? 1 : page}&limit=20`;
-      
-      if (selectedType) {
-        url += `&materialType=${selectedType}`;
-      }
+      const currentPage = reset ? 1 : page;
+      const url = `/materials?status=PUBLISHED&page=${currentPage}&limit=50`;
 
-      const response = await fetch(url);
-      const data = await response.json();
+      console.log('Fetching URL:', url);
+
+      const response = await api.get(url);
+      const data = response.data;
+
+      console.log('Response data:', data);
 
       if (data.success) {
-        const newMaterials = data.data.materials;
-        setHasMore(data.data.pagination.hasMore);
+        const newMaterials = data.data.materials || [];
+        setHasMore(data.data.pagination?.hasMore || false);
         
         if (reset) {
-          setMaterials(newMaterials);
+          setAllMaterials(newMaterials);
         } else {
-          setMaterials(prev => [...prev, ...newMaterials]);
+          setAllMaterials(prev => [...prev, ...newMaterials]);
         }
         
         if (!reset) {
           setPage(prev => prev + 1);
         }
+      } else {
+        console.error('API Error:', data.message);
+        Alert.alert('Error', data.message || 'Failed to load materials');
       }
     } catch (error: any) {
       console.error('Error fetching materials:', error);
-      Alert.alert('Error', 'Failed to load materials');
+      Alert.alert('Error', error.response?.data?.message || 'Failed to load materials');
     } finally {
       setLoading(false);
       setRefreshing(false);
       setLoadingMore(false);
     }
+  };
+
+  // Client-side filtering function
+  const getFilteredMaterials = () => {
+    let filtered = allMaterials;
+
+    // Filter by type (client-side)
+    if (selectedType && selectedType !== 'ALL') {
+      filtered = filtered.filter(material => material.materialType === selectedType);
+    }
+
+    // Filter by search query (client-side)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(material =>
+        material.title.toLowerCase().includes(query) ||
+        material.description.toLowerCase().includes(query) ||
+        material.subject?.name?.toLowerCase().includes(query) ||
+        material.materialType.toLowerCase().includes(query)
+      );
+    }
+
+    return filtered;
   };
 
   const handleRefresh = () => {
@@ -134,30 +164,13 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
     }
   };
 
-  const handleSearch = async (query: string) => {
+  const handleSearch = (query: string) => {
     setSearchQuery(query);
-    if (query.trim()) {
-      try {
-        setLoading(true);
-        const response = await fetch(
-          `https://elearning.mssplonline.in/api/v1/materials?search=${query}&status=PUBLISHED`
-        );
-        const data = await response.json();
-        if (data.success) {
-          setMaterials(data.data.materials);
-          setHasMore(data.data.pagination.hasMore);
-        }
-      } catch (error) {
-        console.error('Search error:', error);
-      } finally {
-        setLoading(false);
-      }
-    } else {
-      fetchMaterials(true);
-    }
+    // No API call - client-side filtering only
   };
 
   const handleTypeFilter = (type: string) => {
+    console.log('Filter selected:', type);
     if (type === 'ALL') {
       setSelectedType(null);
     } else {
@@ -169,6 +182,8 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
     setSelectedMaterial(material);
     setModalVisible(true);
     setPaused(false);
+    setDownloadProgress(0);
+    handleDownload(material);
   };
 
   const handleShare = async () => {
@@ -207,11 +222,10 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
   };
 
   // Download file function
-  const handleDownload = async () => {
-    if (!selectedMaterial) return;
+  const handleDownload = async (material: Material) => {
+    if (!material) return;
 
-    // Check permission for Android
-    if (Platform.OS === 'android') {
+    if (Platform.OS === "android") {
       const hasPermission = await requestStoragePermission();
       if (!hasPermission) {
         Alert.alert('Permission Denied', 'Cannot download without storage permission.');
@@ -220,11 +234,11 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
     }
 
     setDownloading(true);
+    setDownloadProgress(0);
     
-    const fileUrl = getFileUrl(selectedMaterial.objectKey);
-    const fileName = selectedMaterial.file.originalFileName || `${selectedMaterial.title}.${selectedMaterial.materialType.toLowerCase()}`;
+    const fileUrl = getFileUrl(material.objectKey);
+    const fileName = material.file.originalFileName || `${material.title}.${material.materialType.toLowerCase()}`;
     
-    // Determine download directory
     const downloadDir = Platform.OS === 'android' 
       ? RNFS.DownloadDirectoryPath 
       : RNFS.DocumentDirectoryPath;
@@ -232,38 +246,43 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
     const filePath = `${downloadDir}/${fileName}`;
 
     try {
-      // Check if file already exists
       if (await RNFS.exists(filePath)) {
+        setDownloading(false);
         Alert.alert(
-          'File Exists',
-          'This file is already downloaded. Do you want to download again?',
+          'File Already Downloaded',
+          `"${fileName}" is already saved on your device.`,
           [
-            { text: 'Cancel', style: 'cancel' },
+            { text: 'OK' },
             { 
-              text: 'Download Again', 
-              onPress: () => performDownload(fileUrl, filePath, fileName)
+              text: 'Open File', 
+              onPress: () => {
+                if (Platform.OS === 'android') {
+                  Alert.alert('Info', 'File saved in Downloads folder');
+                }
+              }
             }
           ]
         );
-        setDownloading(false);
         return;
       }
 
-      await performDownload(fileUrl, filePath, fileName);
+      await performDownload(fileUrl, filePath, fileName, material);
     } catch (error) {
       console.error('Download error:', error);
       Alert.alert('Download Failed', 'Failed to download file. Please try again.');
       setDownloading(false);
+      setDownloadProgress(0);
     }
   };
 
-  const performDownload = async (fileUrl: string, filePath: string, fileName: string) => {
+  const performDownload = async (fileUrl: string, filePath: string, fileName: string, material: Material) => {
     try {
       const download = RNFS.downloadFile({
         fromUrl: fileUrl,
         toFile: filePath,
         progress: (res) => {
           const progressPercent = (res.bytesWritten / res.contentLength) * 100;
+          setDownloadProgress(progressPercent);
           console.log(`Download progress: ${Math.round(progressPercent)}%`);
         },
         progressDivider: 5,
@@ -273,17 +292,17 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
 
       if (result.statusCode === 200) {
         setDownloading(false);
+        setDownloadProgress(100);
         Alert.alert(
           'Download Complete',
-          `File "${fileName}" has been downloaded successfully!\n\nLocation: ${filePath}`,
+          `"${fileName}" has been downloaded successfully!`,
           [
             { text: 'OK' },
             { 
-              text: 'Open', 
+              text: 'Open File', 
               onPress: () => {
-                // For Android, you can use Intent to open file
                 if (Platform.OS === 'android') {
-                  // You can add intent to open file here
+                  Alert.alert('Info', 'File saved in Downloads folder');
                 }
               }
             }
@@ -296,6 +315,7 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
       console.error('Download error:', error);
       Alert.alert('Download Failed', 'Failed to download file. Please try again.');
       setDownloading(false);
+      setDownloadProgress(0);
     }
   };
 
@@ -404,14 +424,18 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
     }
   };
 
-  const renderHeader = () => (
-    <View style={styles.headerContainer}>
-      <Text style={styles.headerTitle}>Content Library</Text>
-      <Text style={styles.headerSubtitle}>
-        {materials.length} materials available
-      </Text>
-    </View>
-  );
+  const renderHeader = () => {
+    const filteredCount = getFilteredMaterials().length;
+    return (
+      <View style={styles.headerContainer}>
+        <Text style={styles.headerTitle}>Content Library</Text>
+        <Text style={styles.headerSubtitle}>
+          {filteredCount} materials available
+          {selectedType && selectedType !== 'ALL' && ` (${selectedType})`}
+        </Text>
+      </View>
+    );
+  };
 
   const renderSearch = () => (
     <View style={styles.searchContainer}>
@@ -484,19 +508,21 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
     );
   };
 
+  const displayMaterials = getFilteredMaterials();
+
   return (
     <View style={styles.container}>
       {renderSearch()}
       {renderFilterTabs()}
 
-      {loading && materials.length === 0 ? (
+      {loading && allMaterials.length === 0 ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#4F46E5" />
           <Text style={styles.loadingText}>Loading materials...</Text>
         </View>
       ) : (
         <FlatList
-          data={materials}
+          data={displayMaterials}
           keyExtractor={(item) => item.id}
           numColumns={2}
           renderItem={({ item }) => (
@@ -528,6 +554,8 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
         onRequestClose={() => {
           setModalVisible(false);
           setSelectedMaterial(null);
+          setDownloading(false);
+          setDownloadProgress(0);
         }}
       >
         <View style={styles.modalOverlay}>
@@ -538,6 +566,8 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
                 onPress={() => {
                   setModalVisible(false);
                   setSelectedMaterial(null);
+                  setDownloading(false);
+                  setDownloadProgress(0);
                 }}
                 style={styles.modalCloseButton}
               >
@@ -549,12 +579,14 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
               <View style={styles.modalHeaderActions}>
                 {/* Download Button */}
                 <TouchableOpacity 
-                  onPress={handleDownload} 
+                  onPress={() => selectedMaterial && handleDownload(selectedMaterial)} 
                   style={styles.modalActionButton}
                   disabled={downloading}
                 >
                   {downloading ? (
-                    <ActivityIndicator size="small" color="#4F46E5" />
+                    <View style={styles.downloadProgressContainer}>
+                      <ActivityIndicator size="small" color="#4F46E5" />
+                    </View>
                   ) : (
                     <Icon name="download" size={22} color="#4F46E5" />
                   )}
@@ -568,6 +600,23 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
                 </TouchableOpacity>
               </View>
             </View>
+
+            {/* Download Progress Bar */}
+            {downloading && downloadProgress > 0 && downloadProgress < 100 && (
+              <View style={styles.progressContainer}>
+                <View style={styles.progressBar}>
+                  <View 
+                    style={[
+                      styles.progressFill, 
+                      { width: `${downloadProgress}%` }
+                    ]} 
+                  />
+                </View>
+                <Text style={styles.progressText}>
+                  Downloading... {Math.round(downloadProgress)}%
+                </Text>
+              </View>
+            )}
 
             {/* Modal Body */}
             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
@@ -738,6 +787,33 @@ const styles = StyleSheet.create({
   footerLoader: {
     paddingVertical: 16,
     alignItems: 'center',
+  },
+
+  // Progress Bar Styles
+  progressContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#F8F9FA',
+  },
+  progressBar: {
+    height: 4,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#4F46E5',
+    borderRadius: 2,
+  },
+  progressText: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  downloadProgressContainer: {
+    padding: 4,
   },
 
   // Modal Styles

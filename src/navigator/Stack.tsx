@@ -7,6 +7,8 @@ import Login from '../pages/Login';
 import BottomNavigator from './BottomNavigator';
 import JoinLive from '../pages/JoinLive';
 import VideoCall from '../pages/VideoCall';
+import Notification from '../pages/notification/Notification';
+import ReadNotification from '../pages/notification/ReadNotification';
 import { ActivityIndicator, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -34,6 +36,8 @@ export type RootStackParamList = {
     subject: string;
     batch: string;
   };
+  Notifications: undefined;
+  ReadNotification: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -61,7 +65,7 @@ const RootStack: React.FC = () => {
   console.log('RootStack render - isAuthenticated:', isAuthenticated);
 
   return (
-    <Stack.Navigator 
+    <Stack.Navigator
       screenOptions={{ headerShown: false }}
       initialRouteName={isAuthenticated ? "BottomTabs" : "OnBoarding"}
     >
@@ -74,20 +78,36 @@ const RootStack: React.FC = () => {
         <>
           <Stack.Screen name="BottomTabs" component={BottomNavigator} />
           {/* Add JoinLive and VideoCall screens */}
-          <Stack.Screen 
-            name="JoinLive" 
-            component={JoinLive} 
-            options={{ 
+          <Stack.Screen
+            name="JoinLive"
+            component={JoinLive}
+            options={{
               headerShown: false,
               animation: 'slide_from_right',
             }}
           />
-          <Stack.Screen 
-            name="VideoCall" 
-            component={VideoCall} 
-            options={{ 
+          <Stack.Screen
+            name="VideoCall"
+            component={VideoCall}
+            options={{
               headerShown: false,
               animation: 'slide_from_right',
+            }}
+          />
+          <Stack.Screen
+            name="Notifications"
+            component={Notification}
+            options={{
+              headerShown: false,
+              animation: 'slide_from_right',
+            }}
+          />
+          <Stack.Screen
+            name="ReadNotification"
+            component={ReadNotification}
+            options={{
+              headerShown: false,
+              presentation: 'card',
             }}
           />
         </>

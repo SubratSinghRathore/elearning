@@ -64,25 +64,6 @@ const Home = ({ navigation }: any) => {
     { id: "5", name: "Data Science", icon: "database" },
   ];
 
-  const recommendations = [
-    {
-      id: "1",
-      title: "ADVANCED PYTHON",
-      subtitle: "Data Science Mastery",
-      duration: "12h 30m",
-      lessons: "24 lessons",
-      followers: "8k followers",
-    },
-    {
-      id: "2",
-      title: "ECO",
-      subtitle: "Perspective",
-      duration: "8h 45m",
-      lessons: "18 lessons",
-      followers: "8k followers",
-      isEco: true,
-    },
-  ];
 
   const fetchDashboardData = async () => {
     try {
@@ -99,9 +80,9 @@ const Home = ({ navigation }: any) => {
         setUserData(userResponse.data.data);
       }
 
-      const statsResponse = await api.get("/users/students/stats");
+      const statsResponse = await api.get("/dashboard/stats");
       if (statsResponse.data.success) {
-        setStudentStats(statsResponse.data.data);
+        setStudentStats(statsResponse.data.data.counts);
       }
 
       const teachersResponse = await api.get("/users/teachers/summary");
@@ -130,24 +111,6 @@ const Home = ({ navigation }: any) => {
   const onRefresh = () => {
     setRefreshing(true);
     fetchDashboardData();
-  };
-
-  const handleLogout = async () => {
-    Alert.alert(
-      "Logout",
-      "Are you sure you want to logout?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Logout",
-          style: "destructive",
-          onPress: async () => {
-            await AsyncStorage.removeItem("isLoggedIn");
-            await logout();
-          },
-        },
-      ]
-    );
   };
 
   const renderCategory = ({ item }: any) => (
@@ -220,25 +183,26 @@ const Home = ({ navigation }: any) => {
         {/* Stats Section */}
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{studentStats?.totalStudents || 0}</Text>
-            <Text style={styles.statLabel}>Total Students</Text>
+            <Text style={styles.statNumber}>{studentStats?.subjectCount || 0}</Text>
+            <Text style={styles.statLabel}>Subjects</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{studentStats?.activeStudents || 0}</Text>
-            <Text style={styles.statLabel}>Active Students</Text>
+            <Text style={styles.statNumber}>{studentStats?.liveClassCount || 0}</Text>
+            <Text style={styles.statLabel}>Live Classes</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{teachersData?.totalTeachers || 0}</Text>
-            <Text style={styles.statLabel}>Total Teachers</Text>
+            <Text style={styles.statNumber}>{studentStats?.contentCount || 0}</Text>
+            <Text style={styles.statLabel}>Study Material</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{studentStats?.groupStudyCount || 0}</Text>
+            <Text style={styles.statLabel}>Study Groups</Text>
           </View>
         </View>
 
         {/* Popular Categories */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Popular Categories</Text>
-          <TouchableOpacity onPress={() => navigation.navigate("Categories")}>
-            <Text style={styles.seeAllText}>See all</Text>
-          </TouchableOpacity>
         </View>
 
         <FlatList
@@ -255,9 +219,6 @@ const Home = ({ navigation }: any) => {
         <View style={styles.groupStudySection}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Group Study</Text>
-            <TouchableOpacity onPress={() => navigation.navigate("AllGroupStudies")}>
-              <Text style={styles.seeAllText}>See all</Text>
-            </TouchableOpacity>
           </View>
           <View style={styles.groupStudyWrapper}>
             <GroupStudy navigation={navigation} />
@@ -315,7 +276,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: width * 0.05,
     paddingTop: height * 0.02,
-    paddingBottom: height * 0.01,
+    paddingBottom: height * 0.03,
   },
   headerLeft: {
     flex: 1,
@@ -464,34 +425,43 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   statsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: width * 0.05,
-    marginBottom: height * 0.03,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-    padding: width * 0.04,
-    borderRadius: 12,
-    marginHorizontal: width * 0.01,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  statNumber: {
-    fontSize: width * 0.05,
-    fontWeight: "bold",
-    color: "#111827",
-  },
-  statLabel: {
-    fontSize: width * 0.03,
-    color: "#6B7280",
-    marginTop: height * 0.005,
-  },
+  flexDirection: "row",
+  justifyContent: "space-between",
+  paddingHorizontal: 16,
+  marginVertical: 16,
+  gap: 10,
+},
+statCard: {
+  flex: 1,
+  backgroundColor: "#FFFFFF",
+  paddingVertical: 14,
+  paddingHorizontal: 6,
+  borderRadius: 14,
+  alignItems: "center",
+  justifyContent: "center",
+  minHeight: 80,
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.06,
+  shadowRadius: 10,
+  elevation: 3,
+  borderWidth: 1,
+  borderColor: "#F0F0F0",
+},
+statNumber: {
+  fontSize: 22,
+  fontWeight: "700",
+  color: "#111827",
+  marginBottom: 4,
+},
+statLabel: {
+  fontSize: 10,
+  color: "#6B7280",
+  fontWeight: "600",
+  textAlign: "center",
+  textTransform: "uppercase",
+  letterSpacing: 0.8,
+},
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",

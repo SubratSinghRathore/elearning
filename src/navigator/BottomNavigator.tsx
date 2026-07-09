@@ -8,7 +8,7 @@ import Home from '../pages/Home'
 import Profile from '../pages/Profile'
 import Assignment from '../pages/Assignment';
 import Live from '../pages/Live';
-import Content from '../pages/Content'
+import Content from '../pages/materials/Content'
 
 export type RootTabParamList = {
     Home: undefined,
@@ -29,9 +29,10 @@ const BottomNavigator = () => {
                 tabBarInactiveTintColor: "gray",
                 tabBarActiveBackgroundColor: "#ffffff",
                 tabBarStyle: {
-                    height: 65,
+                    height: 80,
                     backgroundColor: "#ffffff",
-                    borderTopWidth: 0,
+                    borderTopWidth: 1,
+                    borderTopColor: "#9a97d7",
                     elevation: 0,
                 },
                 tabBarLabelStyle: {
