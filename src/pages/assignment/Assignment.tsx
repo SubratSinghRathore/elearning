@@ -88,31 +88,31 @@ const Assignment: React.FC<{ navigation: any }> = ({ navigation }) => {
   /**
    * Fetch assignments from API
    */
-  // const fetchAssignments = async () => {
-  //   try {
-  //     setLoading(true);
-  //     console.log('📡 Fetching assignments...');
+  const fetchAssignments = async () => {
+    try {
+      setLoading(true);
+      console.log('📡 Fetching assignments...');
       
-  //     const response = await api.get('/assignments');
+      const response = await api.get('/assignments');
       
-  //     console.log('✅ Assignments response:', response.data);
+      console.log('✅ Assignments response:', response.data);
       
-  //     if (response.data.success) {
-  //       setAssignments(response.data.data.assignments || []);
-  //     } else {
-  //       Alert.alert('Error', response.data.message || 'Failed to fetch assignments');
-  //     }
-  //   } catch (error: any) {
-  //     console.error('❌ Error fetching assignments:', error);
-  //     Alert.alert(
-  //       'Error',
-  //       error.response?.data?.message || 'Something went wrong. Please try again.'
-  //     );
-  //   } finally {
-  //     setLoading(false);
-  //     setRefreshing(false);
-  //   }
-  // };
+      if (response.data.success) {
+        setAssignments(response.data.data.assignments || []);
+      } else {
+        Alert.alert('Error', response.data.message || 'Failed to fetch assignments');
+      }
+    } catch (error: any) {
+      console.error('❌ Error fetching assignments:', error);
+      Alert.alert(
+        'Error',
+        error.response?.data?.message || 'Something went wrong. Please try again.'
+      );
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   /**
    * Refresh assignments on focus

@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const api = axios.create({
   baseURL: 'https://elearning.mssplonline.in/api/v1',
   timeout: 10000,
-  withCredentials: true,
+  withCredentials: false,
   headers: {
     'Content-Type': 'application/json',
     "X-Client-Type": "mobile"
@@ -19,6 +19,8 @@ api.interceptors.request.use(
     if (accessToken && refreshToken) {
       config.headers.Cookie =
         `accessToken=${accessToken}; refreshToken=${refreshToken}`;
+    } else {
+      delete config.headers.Cookie;
     }
 
     return config;

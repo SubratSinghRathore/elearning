@@ -27,8 +27,8 @@ const loginSchema = z.object({
 });
 
 const LoginScreen = ({ navigation }: any) => {
-  const [email, setEmail] = useState("sanjay@yopmail.com");
-  const [password, setPassword] = useState("Student@123");
+  const [email, setEmail] = useState("teacher@yopmail.com");
+  const [password, setPassword] = useState("Teacher@123");
   const [loading, setLoading] = useState(false);
   const [hidePassword, setHidePassword] = useState(true);
   const [errors, setErrors] = useState({
