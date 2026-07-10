@@ -55,8 +55,6 @@ const GroupStudy: React.FC<GroupStudyProps> = ({ navigation }) => {
       setLoading(true);
       const response = await api.get(`/group-study?page=1&limit=10&filter=ALL`);
       
-      console.log('Group Study Rooms Response:', response.data);
-      
       if (response.data.success) {
         setRooms(response.data.data.rooms);
       }

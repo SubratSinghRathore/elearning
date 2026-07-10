@@ -18,8 +18,8 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import { useFocusEffect } from '@react-navigation/native';
-import api from '../api/axios';
-import { useAuth } from '../context/AuthContext';
+import api from '../../api/axios';
+import { useAuth } from '../../context/AuthContext';
 
 const { width, height } = Dimensions.get('window');
 

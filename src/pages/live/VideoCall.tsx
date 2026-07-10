@@ -30,6 +30,7 @@ import {
   TrackPublication,
 } from 'livekit-client';
 import { VideoTrack as LKVideoTrack, AudioSession } from '@livekit/react-native';
+import { Buffer } from "buffer";
 
 const { width, height } = Dimensions.get('window');
 
@@ -82,8 +83,8 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
 
   const [status, setStatus] = useState('Connecting...');
   const [isConnected, setIsConnected] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
-  const [isVideoOff, setIsVideoOff] = useState(false);
+  const [mic, setMic] = useState(false);
+  const [video, setVideo] = useState(false);
   const [isHandRaised, setIsHandRaised] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
   const [showControls, setShowControls] = useState(true);
@@ -150,8 +151,8 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
       setParticipantCount(1);
 
       try {
-        await local.setCameraEnabled(true);
-        await local.setMicrophoneEnabled(true);
+        await local.setCameraEnabled(video);
+        await local.setMicrophoneEnabled(mic);
 
         // Add existing remote participants
         const remotes = Array.from(room.remoteParticipants.values());
@@ -241,6 +242,41 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
       }
     });
 
+    room.on(RoomEvent.DataReceived, (payload, participant) => {
+      const jsonString = Buffer.from(payload).toString("utf8");
+      console.log(jsonString);
+      const data = JSON.parse(jsonString);
+
+      const myId = room.localParticipant.identity;
+      const senderId = participant?.identity;
+
+      switch (data.type) {
+        case "toggle-mic":
+          if (myId === data.targetId) {
+            if (data.enabled) {
+              onMic();
+            } else if (!data.enabled) {
+              offMic();
+            }
+          }
+          break;
+        case "toggle-video":
+          if (myId === data.targetId) {
+            if (data.enabled) {
+              onVideo();
+            } else if (!data.enabled) {
+              offVideo();
+            }
+          }
+          break;
+        case "message":
+          addChatMessage(data.senderName, data.content.trim());
+          break
+        default:
+          break;
+      }
+    });
+
     connectRoom();
 
     return () => {
@@ -251,6 +287,20 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
       showNavigationBar();
     };
   }, []);
+
+//   const toggleScreenShare = async () => {
+//   try {
+//     if (room.localParticipant.isScreenShareEnabled) {
+//       await room.localParticipant.setScreenShareEnabled(false);
+//     } else {
+//       await ScreenCapture.startCapture(); // Android permission dialog
+//       await room.localParticipant.setScreenShareEnabled(true);
+//     }
+//   } catch (e) {
+//     console.log(e);
+//   }
+// };
+// toggleScreenShare();
 
   useEffect(() => {
     // Handle orientation changes
@@ -285,7 +335,7 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
     }
   };
 
-  const addChatMessage = (sender: string, message: string, isSystem = false) => {
+  const addChatMessage = async (sender: string, message: string, isSystem = false) => {
     const newMessage: ChatMessage = {
       id: Date.now().toString(),
       sender,
@@ -294,11 +344,27 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
       isOwn: sender === participantName || sender === 'You',
       isSystem,
     };
+
     setChatMessages((prev) => [...prev, newMessage]);
+
   };
 
-  const sendChatMessage = () => {
+  const sendChatMessage = async () => {
     if (!chatInput.trim()) return;
+
+    const messageJson = {
+      id: "32b1fc1f-c70c-47b5-926a-99406b507056",// need random
+      senderId: room.localParticipant.identity,
+      senderName: participantName,
+      content: chatInput,
+      timestamp: Date.now(),
+      type: "message",
+    };
+
+    await room.localParticipant.publishData(
+      Buffer.from(JSON.stringify(messageJson), "utf8"),
+      { reliable: true }
+    );
     addChatMessage(participantName || 'You', chatInput.trim());
     setChatInput('');
   };
@@ -309,19 +375,24 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const toggleMute = async () => {
-    if (room.localParticipant) {
-      await room.localParticipant.setMicrophoneEnabled(isMuted);
-      setIsMuted(!isMuted);
-    }
-  };
+  const onMic = async () => {
+    setMic(true);
+    await room.localParticipant.setMicrophoneEnabled(true);
+  }
 
-  const toggleVideo = async () => {
-    if (room.localParticipant) {
-      await room.localParticipant.setCameraEnabled(isVideoOff);
-      setIsVideoOff(!isVideoOff);
-    }
-  };
+  const offMic = async () => {
+    setMic(false);
+    await room.localParticipant.setMicrophoneEnabled(false);
+  }
+
+  const onVideo = async () => {
+    setVideo(true);
+    await room.localParticipant.setCameraEnabled(true);
+  }
+  const offVideo = async () => {
+    await room.localParticipant.setCameraEnabled(false);
+    setVideo(false);
+  }
 
   const toggleHandRaise = async () => {
     if (!room.localParticipant) return;
@@ -469,7 +540,7 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
   );
 
   // Get the participant that is in fullscreen
-  const fullscreenParticipant = fullscreenParticipantId 
+  const fullscreenParticipant = fullscreenParticipantId
     ? participants.find(p => p.identity === fullscreenParticipantId)
     : null;
 
@@ -508,10 +579,10 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
         {isFullscreen && fullscreenParticipant ? (
           <View style={styles.fullscreenVideoContainer}>
             {(() => {
-              const videoInfo = remoteVideoTracks[fullscreenParticipant.identity] || 
-                               (fullscreenParticipant.identity === room.localParticipant?.identity ? localVideoTrack : null);
+              const videoInfo = remoteVideoTracks[fullscreenParticipant.identity] ||
+                (fullscreenParticipant.identity === room.localParticipant?.identity ? localVideoTrack : null);
               const isLocal = fullscreenParticipant.identity === room.localParticipant?.identity;
-              
+
               return videoInfo ? (
                 <LKVideoTrack
                   trackRef={{
@@ -534,7 +605,7 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
                 </View>
               );
             })()}
-            
+
             {/* Exit fullscreen button */}
             <TouchableOpacity
               style={styles.exitFullscreenButton}
@@ -615,7 +686,7 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
         {/* Local Participant (small overlay) - Only show in normal view */}
         {!isFullscreen && (
           <View style={styles.localVideoContainer}>
-            {localVideoTrack && !isVideoOff ? (
+            {localVideoTrack && video ? (
               <LKVideoTrack
                 trackRef={{
                   participant: localVideoTrack.participant,
@@ -635,10 +706,10 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
             )}
             <View style={styles.localInfoRow}>
               <Text style={styles.localNameText}>You</Text>
-              {isMuted && <Icon name="mic-off" size={12} color="#FF4444" />}
+              {mic && <Icon name="mic" size={12} color="#FF4444" />}
               {isHandRaised && <Text style={styles.handRaisedIndicator}>🙋</Text>}
             </View>
-            
+
             {/* Fullscreen button on local video */}
             <TouchableOpacity
               style={styles.localFullscreenButton}
@@ -655,23 +726,23 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
         <View style={[styles.controlsContainer, !showControls && styles.controlsHidden]}>
           <View style={styles.controlsRow}>
             <TouchableOpacity
-              style={[styles.controlButton, isMuted && styles.controlButtonActive]}
-              onPress={toggleMute}
+              style={[styles.controlButton, !mic && styles.controlButtonActive]}
+            // onPress={toggleMute}
             >
-              <Icon name={isMuted ? 'mic-off' : 'mic'} size={22} color={isMuted ? '#FF4444' : '#FFFFFF'} />
-              <Text style={styles.controlButtonText}>{isMuted ? 'Unmute' : 'Mute'}</Text>
+              <Icon name={!mic ? 'mic-off' : 'mic'} size={22} color={'#FFFFFF'} />
+              <Text style={styles.controlButtonText}>{!mic ? 'Unmute' : 'Mute'}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.controlButton, isVideoOff && styles.controlButtonActive]}
-              onPress={toggleVideo}
+              style={[styles.controlButton, !video && styles.controlButtonActive]}
+            // onPress={toggleVideo}
             >
               <Icon
-                name={isVideoOff ? 'video-off' : 'video'}
+                name={!video ? 'video-off' : 'video'}
                 size={22}
-                color={isVideoOff ? '#FF4444' : '#FFFFFF'}
+                color={'#FFFFFF'}
               />
-              <Text style={styles.controlButtonText}>{isVideoOff ? 'Video On' : 'Video Off'}</Text>
+              <Text style={styles.controlButtonText}>{video ? 'Video On' : 'Video Off'}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -1022,7 +1093,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   handRaisedIndicator: { fontSize: 14 },
-  
+
   // Local fullscreen button
   localFullscreenButton: {
     position: 'absolute',

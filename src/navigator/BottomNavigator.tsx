@@ -5,9 +5,9 @@ import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 
 //Screens
 import Home from '../pages/Home'
-import Profile from '../pages/Profile'
-import Assignment from '../pages/Assignment';
-import Live from '../pages/Live';
+import Profile from '../pages/profile/Profile'
+import Assignment from '../pages/assignment/Assignment';
+import Live from '../pages/live/Live';
 import Content from '../pages/materials/Content'
 
 export type RootTabParamList = {

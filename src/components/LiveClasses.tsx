@@ -85,9 +85,7 @@ const LiveClasses: React.FC<LiveClassesProps> = ({ navigation, onJoinSession }) 
     try {
       setLoading(true);
       const response = await api.get(`/live-classes?status=LIVE&page=${page}&limit=3`);
-      
-      console.log('Live Classes Response:', response.data);
-      
+
       if (response.data.success) {
         setSessions(response.data.data.sessions);
         setPagination(response.data.data.pagination);

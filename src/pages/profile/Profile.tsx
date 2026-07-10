@@ -14,8 +14,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
-import { useAuth } from '../context/AuthContext';
-import api from '../api/axios';
+import { useAuth } from '../../context/AuthContext';
+import api from '../../api/axios';
 
 // Student role info
 interface StudentRoleInfo {
@@ -90,8 +90,6 @@ const Profile = () => {
     try {
       setLoading(true);
       const response = await api.get('/auth/me');
-
-      console.log('Profile Data:', response.data);
 
       if (response.data.success) {
         setUserData(response.data.data);

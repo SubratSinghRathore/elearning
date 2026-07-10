@@ -22,7 +22,7 @@ import api from "../api/axios";
 import LiveClasses from "../components/LiveClasses";
 import { useAuth } from "../context/AuthContext"
 import { requestPermissions } from '../utils/requestPermissions';
-import GroupStudy from "./groupStydy/GroupStudy";
+import GroupStudy from "./groupStudy/GroupStudy";
 
 const { width, height } = Dimensions.get("window");
 
