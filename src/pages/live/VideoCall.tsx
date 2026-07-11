@@ -31,6 +31,8 @@ import {
 } from 'livekit-client';
 import { VideoTrack as LKVideoTrack, AudioSession } from '@livekit/react-native';
 import { Buffer } from "buffer";
+import Mic from './components/Mic';
+import Video from './components/Video';
 
 const { width, height } = Dimensions.get('window');
 
@@ -86,6 +88,7 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
   const [mic, setMic] = useState(false);
   const [video, setVideo] = useState(false);
   const [isHandRaised, setIsHandRaised] = useState(false);
+  const [isScreenShare, setIsScreenShare] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
   const [showControls, setShowControls] = useState(true);
   const [showChat, setShowChat] = useState(false);
@@ -288,19 +291,19 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
     };
   }, []);
 
-//   const toggleScreenShare = async () => {
-//   try {
-//     if (room.localParticipant.isScreenShareEnabled) {
-//       await room.localParticipant.setScreenShareEnabled(false);
-//     } else {
-//       await ScreenCapture.startCapture(); // Android permission dialog
-//       await room.localParticipant.setScreenShareEnabled(true);
-//     }
-//   } catch (e) {
-//     console.log(e);
-//   }
-// };
-// toggleScreenShare();
+  //   const toggleScreenShare = async () => {
+  //   try {
+  //     if (room.localParticipant.isScreenShareEnabled) {
+  //       await room.localParticipant.setScreenShareEnabled(false);
+  //     } else {
+  //       await ScreenCapture.startCapture(); // Android permission dialog
+  //       await room.localParticipant.setScreenShareEnabled(true);
+  //     }
+  //   } catch (e) {
+  //     console.log(e);
+  //   }
+  // };
+  // toggleScreenShare();
 
   useEffect(() => {
     // Handle orientation changes
@@ -394,6 +397,22 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
     setVideo(false);
   }
 
+  const toggleMute = () => {
+    if (mic) {
+      offMic();
+    } else {
+      onMic();
+    }
+  }
+
+  const toggleVideo = () => {
+    if (video) {
+      offVideo();
+    } else {
+      onVideo();
+    }
+  }
+
   const toggleHandRaise = async () => {
     if (!room.localParticipant) return;
 
@@ -422,6 +441,10 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
       console.log('Failed to update hand status', err);
     }
   };
+
+  const toggleScreenShare = async () => {
+    setIsScreenShare(!isScreenShare)
+  }
 
   const leaveRoom = () => {
     Alert.alert('End Call', 'Are you sure you want to leave the call?', [
@@ -463,6 +486,7 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
     }
   };
 
+
   const renderChatMessage = ({ item }: { item: ChatMessage }) => (
     <View style={[styles.chatMessageContainer, item.isOwn && styles.chatMessageOwn]}>
       <View style={[styles.chatMessageBubble, item.isOwn && styles.chatMessageBubbleOwn]}>
@@ -497,6 +521,8 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
           </Text>
         </View>
         {isLocal && isHandRaised && <Text style={styles.handRaisedBadge}>🙋</Text>}
+        {!isLocal && participantRole == 'TEACHER' && <Mic user={participant} room={room} /> }
+        {!isLocal && participantRole == 'TEACHER' && <Video user={participant} room={room} />}
       </View>
     );
   };
@@ -725,17 +751,17 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
       {!isFullscreen && (
         <View style={[styles.controlsContainer, !showControls && styles.controlsHidden]}>
           <View style={styles.controlsRow}>
-            <TouchableOpacity
+            {participantRole == 'TEACHER' && <TouchableOpacity
               style={[styles.controlButton, !mic && styles.controlButtonActive]}
-            // onPress={toggleMute}
+              onPress={toggleMute}
             >
               <Icon name={!mic ? 'mic-off' : 'mic'} size={22} color={'#FFFFFF'} />
               <Text style={styles.controlButtonText}>{!mic ? 'Unmute' : 'Mute'}</Text>
-            </TouchableOpacity>
+            </TouchableOpacity>}
 
-            <TouchableOpacity
+            {participantRole == 'TEACHER' && <TouchableOpacity
               style={[styles.controlButton, !video && styles.controlButtonActive]}
-            // onPress={toggleVideo}
+              onPress={toggleVideo}
             >
               <Icon
                 name={!video ? 'video-off' : 'video'}
@@ -743,7 +769,16 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
                 color={'#FFFFFF'}
               />
               <Text style={styles.controlButtonText}>{video ? 'Video On' : 'Video Off'}</Text>
+            </TouchableOpacity>}
+
+            {participantRole == 'TEACHER' && <TouchableOpacity
+              style={[styles.controlButton, isHandRaised && styles.controlButtonActive]}
+              onPress={toggleScreenShare}
+            >
+              <Icon name="monitor" size={22} color={isScreenShare ? '#FFD700' : '#FFFFFF'} />
+              <Text style={styles.controlButtonText}>{isScreenShare ? 'stop' : 'share'}</Text>
             </TouchableOpacity>
+            }
 
             <TouchableOpacity
               style={[styles.controlButton, isHandRaised && styles.controlButtonActive]}
