@@ -17,7 +17,7 @@ import Academics from '../pages/academics/Academics';
 export type RootTabParamList = {
     Home: undefined,
     Live: undefined,
-    Assignment: undefined,
+    Work: undefined,
     Profile: undefined,
     Content: undefined,
     Academics: undefined,
@@ -35,7 +35,7 @@ const BottomNavigator = () => {
                 headerShown: false,
                 tabBarActiveTintColor: "#4F46E5",
                 tabBarInactiveTintColor: "gray",
-                tabBarShowLabel: false,
+                tabBarShowLabel: true,
                 tabBarActiveBackgroundColor: "#ffffff",
                 tabBarStyle: {
                     height: 70,
@@ -72,7 +72,7 @@ const BottomNavigator = () => {
                     ),
                 }} ></Tab.Screen>
             }
-            <Tab.Screen name='Assignment' component={Assignment} options={{
+            <Tab.Screen name='Work' component={Assignment} options={{
                 tabBarIcon: ({ color, size }) => (
                     <Icon name="clipboard-text" color={color} size={size} />
                 ),

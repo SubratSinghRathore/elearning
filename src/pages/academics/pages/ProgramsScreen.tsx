@@ -325,7 +325,7 @@ const ProgramsScreen = () => {
       let response;
       if (isEditing && selectedProgram) {
         // Update
-        response = await api.put(`/programs/${selectedProgram.id}`, submitData);
+        response = await api.patch(`/programs/${selectedProgram.id}`, submitData);
       } else {
         // Create
         response = await api.post('/programs', submitData);
@@ -452,16 +452,6 @@ const ProgramsScreen = () => {
             <Icon name="chevron-right" size={20} color="#999" />
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.menuItem} onPress={() => {
-            setMenuVisible(false);
-            // Navigate to program details
-          }}>
-            <View style={[styles.menuIconContainer, { backgroundColor: '#E8F5E9' }]}>
-              <Icon name="eye" size={20} color="#43A047" />
-            </View>
-            <Text style={styles.menuItemText}>View Details</Text>
-            <Icon name="chevron-right" size={20} color="#999" />
-          </TouchableOpacity>
         </View>
       </TouchableOpacity>
     </Modal>

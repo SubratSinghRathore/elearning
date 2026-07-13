@@ -1,4 +1,4 @@
-// pages/academics/BatchesScreen.tsx
+// pages/academics/SubjectsScreen.tsx
 import React, { useState, useCallback } from 'react';
 import {
   View,
@@ -18,11 +18,10 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Picker } from '@react-native-picker/picker';
 import api from '../../../api/axios';
 
-interface Batch {
+interface Subject {
   id: string;
-  academicSession: string;
   name: string;
-  maxStudents: number;
+  description: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -44,8 +43,8 @@ interface ApiResponse {
   statusCode: number;
   message: string;
   data: {
-    batches: Batch[];
-    totalBatches: number;
+    subjects: Subject[];
+    totalSubjects: number;
   };
 }
 
@@ -59,22 +58,21 @@ interface ProgramApiResponse {
   };
 }
 
-const BatchesScreen = () => {
+const SubjectsScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [batches, setBatches] = useState<Batch[]>([]);
-  const [totalBatches, setTotalBatches] = useState(0);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [totalSubjects, setTotalSubjects] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null);
+  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   
   // Form states
   const [formData, setFormData] = useState({
     programId: '',
-    academicSession: '',
     name: '',
-    maxStudents: '',
+    description: '',
     isActive: true,
   });
   
@@ -82,25 +80,23 @@ const BatchesScreen = () => {
   const [loadingPrograms, setLoadingPrograms] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const academicSessions = ['2024-2025', '2025-2026', '2026-2027', '2027-2028', '2028-2029'];
-
-  const fetchBatches = async () => {
+  const fetchSubjects = async () => {
     try {
       setLoading(true);
-      const response = await api.get<ApiResponse>('/batches');
+      const response = await api.get<ApiResponse>('/subjects');
       
       if (response.data.success && response.data.data) {
-        setBatches(response.data.data.batches || []);
-        setTotalBatches(response.data.data.totalBatches || 0);
+        setSubjects(response.data.data.subjects || []);
+        setTotalSubjects(response.data.data.totalSubjects || 0);
       } else {
-        setBatches([]);
-        setTotalBatches(0);
+        setSubjects([]);
+        setTotalSubjects(0);
       }
     } catch (error: any) {
-      console.error('Error fetching batches:', error);
+      console.error('Error fetching subjects:', error);
       if (error.response?.status === 404) {
-        setBatches([]);
-        setTotalBatches(0);
+        setSubjects([]);
+        setTotalSubjects(0);
       }
     } finally {
       setLoading(false);
@@ -125,53 +121,51 @@ const BatchesScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
-      fetchBatches();
+      fetchSubjects();
       fetchPrograms();
     }, [])
   );
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchBatches();
+    await fetchSubjects();
     setRefreshing(false);
   };
 
-  const handleAddBatch = () => {
+  const handleAddSubject = () => {
     setIsEditing(false);
-    setSelectedBatch(null);
+    setSelectedSubject(null);
     setFormData({
       programId: '',
-      academicSession: '',
       name: '',
-      maxStudents: '',
+      description: '',
       isActive: true,
     });
     setModalVisible(true);
   };
 
-  const handleEditBatch = (batch: Batch) => {
+  const handleEditSubject = (subject: Subject) => {
     setIsEditing(true);
-    setSelectedBatch(batch);
+    setSelectedSubject(subject);
     setFormData({
-      programId: batch.program.id,
-      academicSession: batch.academicSession,
-      name: batch.name,
-      maxStudents: batch.maxStudents.toString(),
-      isActive: batch.isActive,
+      programId: subject.program.id,
+      name: subject.name,
+      description: subject.description || '',
+      isActive: subject.isActive,
     });
     setModalVisible(true);
   };
 
-  const handleDeleteBatch = (batch: Batch) => {
+  const handleDeleteSubject = (subject: Subject) => {
     Alert.alert(
-      'Delete Batch',
-      `Are you sure you want to delete "${batch.name}"?`,
+      'Delete Subject',
+      `Are you sure you want to delete "${subject.name}"?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => confirmDelete(batch.id),
+          onPress: () => confirmDelete(subject.id),
         },
       ]
     );
@@ -180,17 +174,17 @@ const BatchesScreen = () => {
   const confirmDelete = async (id: string) => {
     try {
       setLoading(true);
-      const response = await api.delete(`/batches/${id}`);
+      const response = await api.delete(`/subjects/${id}`);
       
       if (response.data.success) {
-        Alert.alert('Success', 'Batch deleted successfully');
-        await fetchBatches();
+        Alert.alert('Success', 'Subject deleted successfully');
+        await fetchSubjects();
       } else {
-        Alert.alert('Error', response.data.message || 'Failed to delete batch');
+        Alert.alert('Error', response.data.message || 'Failed to delete subject');
       }
     } catch (error: any) {
-      console.error('Error deleting batch:', error);
-      Alert.alert('Error', error.response?.data?.message || 'Failed to delete batch');
+      console.error('Error deleting subject:', error);
+      Alert.alert('Error', error.response?.data?.message || 'Failed to delete subject');
     } finally {
       setLoading(false);
     }
@@ -202,16 +196,8 @@ const BatchesScreen = () => {
       Alert.alert('Validation Error', 'Please select a program');
       return;
     }
-    if (!formData.academicSession) {
-      Alert.alert('Validation Error', 'Please select an academic session');
-      return;
-    }
     if (!formData.name || formData.name.trim().length < 2) {
-      Alert.alert('Validation Error', 'Batch name must be at least 2 characters');
-      return;
-    }
-    if (!formData.maxStudents || parseInt(formData.maxStudents) <= 0) {
-      Alert.alert('Validation Error', 'Please enter a valid max students count');
+      Alert.alert('Validation Error', 'Subject name must be at least 2 characters');
       return;
     }
 
@@ -219,31 +205,33 @@ const BatchesScreen = () => {
     try {
       const submitData = {
         programId: formData.programId,
-        academicSession: formData.academicSession,
         name: formData.name.trim(),
-        maxStudents: parseInt(formData.maxStudents),
+        description: formData.description.trim() || '',
         isActive: formData.isActive,
       };
 
+      console.log('Submitting data:', submitData);
+
       let response;
-      if (isEditing && selectedBatch) {
-        response = await api.put(`/batches/${selectedBatch.id}`, submitData);
+      if (isEditing && selectedSubject) {
+        response = await api.patch(`/subjects/${selectedSubject.id}`, submitData);
       } else {
-        // POST request to create new batch
-        response = await api.post('/batches', submitData);
+        response = await api.post('/subjects', submitData);
       }
+
+      console.log('Response:', response.data);
 
       if (response.data.success) {
         Alert.alert(
           'Success',
-          isEditing ? 'Batch updated successfully!' : 'Batch created successfully!',
+          isEditing ? 'Subject updated successfully!' : 'Subject created successfully!',
           [{ text: 'OK', onPress: () => {
             setModalVisible(false);
-            fetchBatches();
+            fetchSubjects();
           }}]
         );
       } else {
-        Alert.alert('Error', response.data.message || 'Failed to save batch');
+        Alert.alert('Error', response.data.message || 'Failed to save subject');
       }
     } catch (error: any) {
       console.error('Submit error:', error);
@@ -251,7 +239,7 @@ const BatchesScreen = () => {
         'Error', 
         error.response?.data?.message || 
         error.message || 
-        'Failed to save batch'
+        'Failed to save subject'
       );
     } finally {
       setSubmitting(false);
@@ -268,11 +256,11 @@ const BatchesScreen = () => {
     });
   };
 
-  const renderBatchItem = ({ item }: { item: Batch }) => (
-    <View style={styles.batchCard}>
+  const renderSubjectItem = ({ item }: { item: Subject }) => (
+    <View style={styles.subjectCard}>
       <View style={styles.cardHeader}>
-        <View style={styles.batchInfo}>
-          <Text style={styles.batchName}>{item.name}</Text>
+        <View style={styles.subjectInfo}>
+          <Text style={styles.subjectName}>{item.name}</Text>
           <Text style={styles.programName}>{item.program.name}</Text>
         </View>
         <View style={[styles.statusBadge, item.isActive ? styles.activeBadge : styles.inactiveBadge]}>
@@ -282,36 +270,33 @@ const BatchesScreen = () => {
         </View>
       </View>
 
-      <View style={styles.cardBody}>
-        <View style={styles.detailItem}>
-          <Icon name="calendar" size={14} color="#666" />
-          <Text style={styles.detailText}>{item.academicSession}</Text>
-        </View>
-        <View style={styles.detailItem}>
-          <Icon name="users" size={14} color="#666" />
-          <Text style={styles.detailText}>Max: {item.maxStudents} students</Text>
-        </View>
+      {item.description && (
+        <Text style={styles.descriptionText} numberOfLines={2}>
+          {item.description}
+        </Text>
+      )}
+
+      <View style={styles.cardFooter}>
         <View style={styles.detailItem}>
           <Icon name="clock" size={14} color="#666" />
           <Text style={styles.detailText}>Created: {formatDate(item.createdAt)}</Text>
         </View>
-      </View>
-
-      <View style={styles.cardActions}>
-        <TouchableOpacity 
-          style={[styles.actionButton, styles.editButton]} 
-          onPress={() => handleEditBatch(item)}
-        >
-          <Icon name="edit-2" size={16} color="#4F46E5" />
-          <Text style={styles.editButtonText}>Edit</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.actionButton, styles.deleteButton]} 
-          onPress={() => handleDeleteBatch(item)}
-        >
-          <Icon name="trash-2" size={16} color="#E53935" />
-          <Text style={styles.deleteButtonText}>Delete</Text>
-        </TouchableOpacity>
+        <View style={styles.cardActions}>
+          <TouchableOpacity 
+            style={[styles.actionButton, styles.editButton]} 
+            onPress={() => handleEditSubject(item)}
+          >
+            <Icon name="edit-2" size={16} color="#4F46E5" />
+            <Text style={styles.editButtonText}>Edit</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.actionButton, styles.deleteButton]} 
+            onPress={() => handleDeleteSubject(item)}
+          >
+            <Icon name="trash-2" size={16} color="#E53935" />
+            <Text style={styles.deleteButtonText}>Delete</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -327,7 +312,7 @@ const BatchesScreen = () => {
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>
-              {isEditing ? 'Edit Batch' : 'Create New Batch'}
+              {isEditing ? 'Edit Subject' : 'Create New Subject'}
             </Text>
             <TouchableOpacity onPress={() => setModalVisible(false)}>
               <Icon name="x" size={24} color="#1A1A1A" />
@@ -336,7 +321,7 @@ const BatchesScreen = () => {
 
           <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
             <Text style={styles.modalSubtitle}>
-              {isEditing ? 'Update batch details' : 'Set up a new batch with its details.'}
+              {isEditing ? 'Update subject details' : 'Set up a new subject with its details.'}
             </Text>
 
             {/* Program Selection */}
@@ -364,44 +349,32 @@ const BatchesScreen = () => {
               )}
             </View>
 
-            {/* Academic Session */}
+            {/* Subject Name */}
             <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Academic Session *</Text>
-              <View style={styles.pickerContainer}>
-                <Picker
-                  selectedValue={formData.academicSession}
-                  onValueChange={(value) => setFormData({ ...formData, academicSession: value })}
-                  style={styles.picker}
-                >
-                  <Picker.Item label="Select session" value="" />
-                  {academicSessions.map((session) => (
-                    <Picker.Item key={session} label={session} value={session} />
-                  ))}
-                </Picker>
-              </View>
-            </View>
-
-            {/* Batch Name */}
-            <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Batch Name *</Text>
+              <Text style={styles.formLabel}>Subject Name *</Text>
               <TextInput
                 style={styles.formInput}
-                placeholder="e.g. Batch A, Morning Batch"
+                placeholder="e.g. Mathematics, Physics"
                 value={formData.name}
                 onChangeText={(text) => setFormData({ ...formData, name: text })}
               />
             </View>
 
-            {/* Max Students */}
+            {/* Description */}
             <View style={styles.formGroup}>
-              <Text style={styles.formLabel}>Max Students</Text>
+              <Text style={styles.formLabel}>Description</Text>
               <TextInput
-                style={styles.formInput}
-                placeholder="e.g. 60"
-                value={formData.maxStudents}
-                onChangeText={(text) => setFormData({ ...formData, maxStudents: text })}
-                keyboardType="numeric"
+                style={[styles.formInput, styles.textArea]}
+                placeholder="Brief description of the subject..."
+                value={formData.description}
+                onChangeText={(text) => setFormData({ ...formData, description: text })}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
               />
+              <Text style={styles.charCount}>
+                {formData.description.length} characters
+              </Text>
             </View>
 
             {/* Active Toggle */}
@@ -434,7 +407,7 @@ const BatchesScreen = () => {
                   <ActivityIndicator size="small" color="#FFF" />
                 ) : (
                   <Text style={styles.createModalButtonText}>
-                    {isEditing ? 'Update Batch' : 'Create Batch'}
+                    {isEditing ? 'Update Subject' : 'Create Subject'}
                   </Text>
                 )}
               </TouchableOpacity>
@@ -445,17 +418,17 @@ const BatchesScreen = () => {
     </Modal>
   );
 
-  const filteredBatches = batches.filter(batch =>
-    batch.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    batch.program.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    batch.academicSession.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredSubjects = subjects.filter(subject =>
+    subject.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    subject.program.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (subject.description && subject.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   if (loading) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color="#4F46E5" />
-        <Text style={styles.loadingText}>Loading batches...</Text>
+        <Text style={styles.loadingText}>Loading subjects...</Text>
       </View>
     );
   }
@@ -465,12 +438,12 @@ const BatchesScreen = () => {
       {/* Header */}
       <View style={styles.headerContainer}>
         <View>
-          <Text style={styles.headerTitle}>Batches</Text>
-          <Text style={styles.headerSubtitle}>{totalBatches} batches total</Text>
+          <Text style={styles.headerTitle}>Subjects</Text>
+          <Text style={styles.headerSubtitle}>{totalSubjects} subjects total</Text>
         </View>
-        <TouchableOpacity style={styles.addButton} onPress={handleAddBatch}>
+        <TouchableOpacity style={styles.addButton} onPress={handleAddSubject}>
           <Icon name="plus" size={20} color="#FFF" />
-          <Text style={styles.addButtonText}>Add Batch</Text>
+          <Text style={styles.addButtonText}>Add Subject</Text>
         </TouchableOpacity>
       </View>
 
@@ -479,7 +452,7 @@ const BatchesScreen = () => {
         <Icon name="search" size={20} color="#999" style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search batches by name, program, or session..."
+          placeholder="Search subjects by name, program, or description..."
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholderTextColor="#999"
@@ -492,8 +465,8 @@ const BatchesScreen = () => {
       </View>
 
       <FlatList
-        data={filteredBatches}
-        renderItem={renderBatchItem}
+        data={filteredSubjects}
+        renderItem={renderSubjectItem}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.listContent}
         refreshControl={
@@ -501,15 +474,15 @@ const BatchesScreen = () => {
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Icon name="users" size={64} color="#CCC" />
-            <Text style={styles.emptyTitle}>No Batches Found</Text>
+            <Icon name="book" size={64} color="#CCC" />
+            <Text style={styles.emptyTitle}>No Subjects Found</Text>
             <Text style={styles.emptyText}>
               {searchQuery.length > 0 
-                ? 'No batches match your search criteria' 
-                : 'Get started by creating your first batch'}
+                ? 'No subjects match your search criteria' 
+                : 'Get started by creating your first subject'}
             </Text>
-            <TouchableOpacity style={styles.emptyButton} onPress={handleAddBatch}>
-              <Text style={styles.emptyButtonText}>Create Batch</Text>
+            <TouchableOpacity style={styles.emptyButton} onPress={handleAddSubject}>
+              <Text style={styles.emptyButtonText}>Create Subject</Text>
             </TouchableOpacity>
           </View>
         }
@@ -602,7 +575,7 @@ const styles = StyleSheet.create({
   listContent: {
     padding: 16,
   },
-  batchCard: {
+  subjectCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
@@ -620,13 +593,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 10,
+    marginBottom: 8,
   },
-  batchInfo: {
+  subjectInfo: {
     flex: 1,
     marginRight: 8,
   },
-  batchName: {
+  subjectName: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1A1A1A',
@@ -657,10 +630,16 @@ const styles = StyleSheet.create({
   inactiveText: {
     color: '#E53935',
   },
-  cardBody: {
+  descriptionText: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 10,
+    lineHeight: 18,
+  },
+  cardFooter: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 12,
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: '#F0F0F0',
@@ -668,34 +647,28 @@ const styles = StyleSheet.create({
   detailItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 16,
-    marginBottom: 4,
   },
   detailText: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#666',
-    marginLeft: 6,
+    marginLeft: 4,
   },
   cardActions: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-    paddingTop: 10,
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 6,
-    marginLeft: 8,
+    marginLeft: 6,
   },
   editButton: {
     backgroundColor: '#E8EAF6',
   },
   editButtonText: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#4F46E5',
     fontWeight: '500',
     marginLeft: 4,
@@ -704,7 +677,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFEBEE',
   },
   deleteButtonText: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#E53935',
     fontWeight: '500',
     marginLeft: 4,
@@ -791,6 +764,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0E0E0',
   },
+  textArea: {
+    height: 100,
+    textAlignVertical: 'top',
+  },
+  charCount: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 4,
+    textAlign: 'right',
+  },
   pickerContainer: {
     backgroundColor: '#F5F5F5',
     borderRadius: 10,
@@ -856,4 +839,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default BatchesScreen;
+export default SubjectsScreen;

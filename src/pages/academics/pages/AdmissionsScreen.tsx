@@ -14,8 +14,9 @@ import {
   ScrollView,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
-import { useFocusEffect } from '@react-navigation/native';
+import { NavigationProp, useFocusEffect, useNavigation } from '@react-navigation/native';
 import api from '../../../api/axios';
+import { RootStackParamList } from '../../../navigator/Stack';
 
 interface Admission {
   id: string;
@@ -67,6 +68,8 @@ interface ApiResponse {
   };
 }
 
+type NavigationProps = NavigationProp<RootStackParamList>;
+
 const AdmissionsScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -75,12 +78,13 @@ const AdmissionsScreen = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAdmission, setSelectedAdmission] = useState<Admission | null>(null);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const navigation = useNavigation<NavigationProps>();
 
   const fetchAdmissions = async () => {
     try {
       setLoading(true);
       const response = await api.get<ApiResponse>('/admission');
-      
+
       if (response.data.success && response.data.data) {
         setAdmissions(response.data.data.admissions || []);
         setTotalAdmissions(response.data.data.pagination?.total || 0);
@@ -154,15 +158,25 @@ const AdmissionsScreen = () => {
     setDetailModalVisible(true);
   };
 
+  // Function to open image in viewer
+  const openImage = (imageUri: string, title?: string) => {
+    navigation.navigate('ImageViewer', {
+      imageUri: imageUri,
+      imageTitle: title || 'Image',
+      enableDownload: true,
+      enableShare: true,
+    });
+  };
+
   const renderAdmissionItem = ({ item }: { item: Admission }) => {
     const statusColors = getStatusColor(item.status);
-    const address = typeof item.personal.address === 'string' 
-      ? item.personal.address 
+    const address = typeof item.personal.address === 'string'
+      ? item.personal.address
       : `${item.personal.address.line1}, ${item.personal.address.city}, ${item.personal.address.state} - ${item.personal.address.zipCode}`;
 
     return (
-      <TouchableOpacity 
-        style={styles.admissionCard} 
+      <TouchableOpacity
+        style={styles.admissionCard}
         onPress={() => handleAdmissionPress(item)}
         activeOpacity={0.7}
       >
@@ -228,8 +242,8 @@ const AdmissionsScreen = () => {
     if (!selectedAdmission) return null;
 
     const statusColors = getStatusColor(selectedAdmission.status);
-    const address = typeof selectedAdmission.personal.address === 'string' 
-      ? selectedAdmission.personal.address 
+    const address = typeof selectedAdmission.personal.address === 'string'
+      ? selectedAdmission.personal.address
       : `${selectedAdmission.personal.address.line1}, ${selectedAdmission.personal.address.city}, ${selectedAdmission.personal.address.state} - ${selectedAdmission.personal.address.zipCode}`;
 
     return (
@@ -252,7 +266,7 @@ const AdmissionsScreen = () => {
               {/* Personal Information */}
               <View style={styles.modalSection}>
                 <Text style={styles.modalSectionTitle}>Personal Information</Text>
-                
+
                 <View style={styles.modalInfoItem}>
                   <Text style={styles.modalLabel}>Full Name</Text>
                   <Text style={styles.modalValue}>{selectedAdmission.personal.fullName}</Text>
@@ -315,16 +329,14 @@ const AdmissionsScreen = () => {
               {/* Documents */}
               <View style={styles.modalSection}>
                 <Text style={styles.modalSectionTitle}>Documents</Text>
-                
+
                 {selectedAdmission.documents.photo && (
                   <View style={styles.documentItem}>
                     <Icon name="image" size={20} color="#4F46E5" />
                     <Text style={styles.documentLabel}>Photo</Text>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.documentLink}
-                      onPress={() => {
-                        // Open image viewer or download
-                      }}
+                      onPress={() => openImage(selectedAdmission.documents.photo, 'Photo')}
                     >
                       <Text style={styles.documentLinkText}>View</Text>
                       <Icon name="external-link" size={16} color="#4F46E5" />
@@ -336,11 +348,9 @@ const AdmissionsScreen = () => {
                   <View style={styles.documentItem}>
                     <Icon name="file" size={20} color="#FB8C00" />
                     <Text style={styles.documentLabel}>Aadhaar</Text>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.documentLink}
-                      onPress={() => {
-                        // Open document viewer
-                      }}
+                      onPress={() => openImage(selectedAdmission.documents.aadhaar, 'Aadhaar')}
                     >
                       <Text style={styles.documentLinkText}>View</Text>
                       <Icon name="external-link" size={16} color="#FB8C00" />
@@ -352,11 +362,9 @@ const AdmissionsScreen = () => {
                   <View style={styles.documentItem}>
                     <Icon name="file-text" size={20} color="#43A047" />
                     <Text style={styles.documentLabel}>Marksheet</Text>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={styles.documentLink}
-                      onPress={() => {
-                        // Open document viewer
-                      }}
+                      onPress={() => openImage(selectedAdmission.documents.marksheet, 'Marksheet')}
                     >
                       <Text style={styles.documentLinkText}>View</Text>
                       <Icon name="external-link" size={16} color="#43A047" />
@@ -449,8 +457,8 @@ const AdmissionsScreen = () => {
             <Icon name="users" size={64} color="#CCC" />
             <Text style={styles.emptyTitle}>No Admissions Found</Text>
             <Text style={styles.emptyText}>
-              {searchQuery.length > 0 
-                ? 'No applications match your search criteria' 
+              {searchQuery.length > 0
+                ? 'No applications match your search criteria'
                 : 'No applications available'}
             </Text>
           </View>

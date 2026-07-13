@@ -11,6 +11,7 @@ import Notification from '../pages/notification/Notification';
 import ReadNotification from '../pages/notification/ReadNotification';
 import { ActivityIndicator, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import ImageViewer from '../components/ImageViewer';
 
 export type RootStackParamList = {
   OnBoarding: undefined;
@@ -38,6 +39,13 @@ export type RootStackParamList = {
   };
   Notifications: undefined;
   ReadNotification: undefined;
+  ImageViewer: {
+    imageUri: string;
+    imageTitle?: string;
+    enableDownload?: boolean;
+    enableShare?: boolean;
+    onClose?: () => void;
+  };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -90,6 +98,15 @@ const RootStack: React.FC = () => {
             options={{
               headerShown: false,
               presentation: 'card',
+            }}
+          />
+          <Stack.Screen
+            name="ImageViewer"
+            component={ImageViewer}
+            options={{
+              headerShown: false,
+              presentation: 'fullScreenModal',
+              animation: 'fade',
             }}
           />
         </>

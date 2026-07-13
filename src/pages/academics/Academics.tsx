@@ -17,7 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 // Sub-category components
 import ProgramsScreen from './pages/ProgramsScreen';
 import BatchesScreen from './pages/BatchesScreen';
-// import SubjectsScreen from './academics/SubjectsScreen';
+import SubjectsScreen from './pages/SubjectScreen';
 // import PeopleScreen from './academics/PeopleScreen';
 import TeachersScreen from './pages/TeachersScreen';
 import AdmissionsScreen from './pages/AdmissionsScreen';
@@ -76,13 +76,13 @@ const Academics = () => {
           color: '#43A047',
           component: BatchesScreen 
         },
-        // { 
-        //   id: '1-3', 
-        //   name: 'Subjects', 
-        //   icon: 'book', 
-        //   color: '#FB8C00',
-        //   component: SubjectsScreen 
-        // },
+        { 
+          id: '1-3', 
+          name: 'Subjects', 
+          icon: 'book', 
+          color: '#FB8C00',
+          component: SubjectsScreen 
+        },
       ]
     },
     {
