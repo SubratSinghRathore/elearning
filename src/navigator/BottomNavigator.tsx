@@ -1,7 +1,10 @@
 import { View, Text } from 'react-native'
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import api from '../api/axios';
+import { useAuth } from "../context/AuthContext"
 
 //Screens
 import Home from '../pages/Home'
@@ -9,6 +12,7 @@ import Profile from '../pages/profile/Profile'
 import Assignment from '../pages/assignment/Assignment';
 import Live from '../pages/live/Live';
 import Content from '../pages/materials/Content'
+import Academics from '../pages/academics/Academics';
 
 export type RootTabParamList = {
     Home: undefined,
@@ -16,31 +20,32 @@ export type RootTabParamList = {
     Assignment: undefined,
     Profile: undefined,
     Content: undefined,
+    Academics: undefined,
 };
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 
 const BottomNavigator = () => {
+
+    const { user } = useAuth()
+
     return (
         <Tab.Navigator
             screenOptions={{
                 headerShown: false,
                 tabBarActiveTintColor: "#4F46E5",
                 tabBarInactiveTintColor: "gray",
+                tabBarShowLabel: false,
                 tabBarActiveBackgroundColor: "#ffffff",
                 tabBarStyle: {
-                    height: 80,
+                    height: 70,
                     backgroundColor: "#ffffff",
                     borderTopWidth: 1,
                     borderTopColor: "#9a97d7",
                     elevation: 0,
                 },
-                tabBarLabelStyle: {
-                    fontSize: 14,
-                    fontWeight: '600',
-                    borderRadius: 10
-                },
                 tabBarItemStyle: {
+                    paddingTop: 8,
                     borderRadius: 12,
                     overflow: "hidden",
                 },
@@ -60,6 +65,13 @@ const BottomNavigator = () => {
                     <Icon name="file-multiple" color={color} size={size} />
                 ),
             }} ></Tab.Screen>
+            {user?.role === 'TEACHER' &&
+                <Tab.Screen name='Academics' component={Academics} options={{
+                    tabBarIcon: ({ color, size }) => (
+                        <Icon name="town-hall" color={color} size={size} />
+                    ),
+                }} ></Tab.Screen>
+            }
             <Tab.Screen name='Assignment' component={Assignment} options={{
                 tabBarIcon: ({ color, size }) => (
                     <Icon name="clipboard-text" color={color} size={size} />

@@ -1,4 +1,3 @@
-// pages/VideoCall.tsx - Full featured LiveKit video call
 import React, { useEffect, useState } from 'react';
 import {
   SafeAreaView,
@@ -29,45 +28,17 @@ import {
   LocalParticipant,
   TrackPublication,
 } from 'livekit-client';
+import {
+  VideoCallProps,
+  ChatMessage,
+  VideoTrackInfo,
+} from "./types";
 import { VideoTrack as LKVideoTrack, AudioSession } from '@livekit/react-native';
 import { Buffer } from "buffer";
 import Mic from './components/Mic';
 import Video from './components/Video';
 
 const { width, height } = Dimensions.get('window');
-
-interface VideoCallProps {
-  navigation: any;
-  route: {
-    params: {
-      roomName: string;
-      token: string;
-      serverURL: string;
-      participantName: string;
-      participantRole: string;
-      sessionId: string;
-      title: string;
-      teacher: string;
-      subject: string;
-      batch: string;
-    };
-  };
-}
-
-interface ChatMessage {
-  id: string;
-  sender: string;
-  message: string;
-  timestamp: Date;
-  isOwn: boolean;
-  isSystem?: boolean;
-}
-
-// Minimal shape @livekit/react-native's <VideoTrack /> needs to render a tile.
-interface VideoTrackInfo {
-  participant: Participant;
-  publication: TrackPublication;
-}
 
 const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
   const {
@@ -290,20 +261,6 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
       showNavigationBar();
     };
   }, []);
-
-  //   const toggleScreenShare = async () => {
-  //   try {
-  //     if (room.localParticipant.isScreenShareEnabled) {
-  //       await room.localParticipant.setScreenShareEnabled(false);
-  //     } else {
-  //       await ScreenCapture.startCapture(); // Android permission dialog
-  //       await room.localParticipant.setScreenShareEnabled(true);
-  //     }
-  //   } catch (e) {
-  //     console.log(e);
-  //   }
-  // };
-  // toggleScreenShare();
 
   useEffect(() => {
     // Handle orientation changes

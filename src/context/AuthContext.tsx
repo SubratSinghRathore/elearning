@@ -6,6 +6,7 @@ interface User {
   id: string;
   name: string;
   email: string;
+  role: string
 }
 
 interface AuthContextType {
@@ -59,7 +60,7 @@ export const AuthProvider = ({
 
       await AsyncStorage.removeItem('accessToken');
       await AsyncStorage.removeItem('refreshToken');
-      await AsyncStorage.removeItem('userData');
+      await AsyncStorage.removeItem('userRole');
       await AsyncStorage.removeItem('isLoggedIn');
 
       setUser(null);
@@ -83,11 +84,10 @@ export const AuthProvider = ({
         };
       }
 
-      const { accessToken, refreshToken, user } = response.data.data;
+      const { accessToken, refreshToken } = response.data.data;
 
       await AsyncStorage.setItem('accessToken', accessToken);
       await AsyncStorage.setItem('refreshToken', refreshToken);
-      await AsyncStorage.setItem('userData', JSON.stringify(user));
       await AsyncStorage.setItem('isLoggedIn', 'true');
 
       // Verify immediately using cookies sent by interceptor
@@ -95,6 +95,13 @@ export const AuthProvider = ({
 
       setUser(me.data.data);
       setIsAuthenticated(true);
+
+      await AsyncStorage.setItem('userRole', me.data.data.role);
+      // await AsyncStorage.setItem('userEmail', response.data.data.email);
+      // await AsyncStorage.setItem('userphoneNumber', response.data.data.phoneNumber);
+      // await AsyncStorage.setItem('userName', response.data.data.personalInfo.name);
+      // await AsyncStorage.setItem('userGender', response.data.data.personalInfo.gender);
+      // await AsyncStorage.setItem('userId', response.data.data.id);
 
       return { success: true };
     } catch (error: any) {

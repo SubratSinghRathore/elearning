@@ -43,27 +43,9 @@ export type RootStackParamList = {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const RootStack: React.FC = () => {
-  const { isAuthenticated, loading, checkAuthStatus } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
   const [initialRoute, setInitialRoute] = useState<'OnBoarding' | 'BottomTabs'>('OnBoarding');
-
-  useEffect(() => {
-    // Force check auth status when component mounts
-    const checkAuth = async () => {
-      await checkAuthStatus();
-    };
-    checkAuth();
-  }, []);
-
-  if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F6FF' }}>
-        <ActivityIndicator size="large" color="#4F46E5" />
-      </View>
-    );
-  }
-
-  console.log('RootStack render - isAuthenticated:', isAuthenticated);
-
+  
   return (
     <Stack.Navigator
       screenOptions={{ headerShown: false }}

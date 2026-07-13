@@ -8,6 +8,7 @@ import {
 } from 'react-native-safe-area-context'
 import { StatusBar } from 'react-native'
 import { AuthProvider } from './context/AuthContext';
+import AppBootstrap from './AppBootstrap';
 
 export default function App() {
   return (
@@ -16,7 +17,7 @@ export default function App() {
         <StatusBar
           translucent={false}
           backgroundColor="#ffffff"
-          barStyle="light-content"
+          barStyle="dark-content"
         />
         <SafeAreaView
           edges={['top']}
@@ -26,7 +27,7 @@ export default function App() {
           }}
         >
           <NavigationContainer>
-            <RootStack />
+            <AppBootstrap />
           </NavigationContainer>
         </SafeAreaView>
       </SafeAreaProvider>
