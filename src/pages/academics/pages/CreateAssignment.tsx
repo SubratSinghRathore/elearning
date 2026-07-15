@@ -14,7 +14,7 @@ import {
 import Icon from 'react-native-vector-icons/Feather';
 import { useNavigation } from '@react-navigation/native';
 import { Picker } from '@react-native-picker/picker';
-// import Slider from '@react-native-community/slider';
+// import Slider from '@react-native-community/slider'; 
 import api from '../../../api/axios';
 import AssessmentPreview from '../../../components/AssignmentPreview';
 
