@@ -493,20 +493,6 @@ const Profile = () => {
           />
         </View>
 
-        <View style={styles.menuItem}>
-          <View style={styles.menuLeft}>
-            <View style={[styles.iconContainer, { backgroundColor: '#F3E5F5' }]}>
-              <Icon name="moon" size={20} color="#8E24AA" />
-            </View>
-            <Text style={styles.menuText}>Dark Mode</Text>
-          </View>
-          <Switch
-            value={darkMode}
-            onValueChange={setDarkMode}
-            trackColor={{ false: '#D6D6D6', true: '#4F46E5' }}
-            thumbColor={darkMode ? '#FFF' : '#FFF'}
-          />
-        </View>
       </View>
 
       {/* Logout Button */}
