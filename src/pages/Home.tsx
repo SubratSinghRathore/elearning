@@ -23,6 +23,7 @@ import LiveClasses from "../components/LiveClasses";
 import { useAuth } from "../context/AuthContext"
 import { requestPermissions } from '../utils/requestPermissions';
 import GroupStudy from "./groupStudy/GroupStudy";
+import ScoreBoardSmall from "../components/ScoreBoardSmall";
 
 const { width, height } = Dimensions.get("window");
 
@@ -214,6 +215,8 @@ const Home = ({ navigation }: any) => {
           style={styles.categoriesList}
           contentContainerStyle={styles.categoriesListContent}
         />
+
+        {user?.role === 'TEACHER' && <ScoreBoardSmall />}
 
         {/* Group Study Section */}
         <View style={styles.groupStudySection}>

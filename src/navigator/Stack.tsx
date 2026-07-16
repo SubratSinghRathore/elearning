@@ -13,6 +13,7 @@ import { ActivityIndicator, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ImageViewer from '../components/ImageViewer';
 import TakeAssessment from '../pages/assignment/TakeAssessment';
+import ScoreBoard from '../pages/scoreBoard/ScoreBoard';
 
 export type RootStackParamList = {
   OnBoarding: undefined;
@@ -50,6 +51,7 @@ export type RootStackParamList = {
   TakeAssessment: {
     assessmentId: string;
   };
+  ScoreBoard: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -116,6 +118,14 @@ const RootStack: React.FC = () => {
           <Stack.Screen
             name="TakeAssessment"
             component={TakeAssessment}
+            options={{
+              headerShown: false,
+              animation: 'slide_from_right',
+            }}
+          />
+          <Stack.Screen
+            name="ScoreBoard"
+            component={ScoreBoard}
             options={{
               headerShown: false,
               animation: 'slide_from_right',
