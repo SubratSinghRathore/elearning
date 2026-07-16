@@ -17,7 +17,7 @@ import Academics from '../pages/academics/Academics';
 export type RootTabParamList = {
     Home: undefined,
     Live: undefined,
-    Work: undefined,
+    Assignment: undefined,
     Profile: undefined,
     Content: undefined,
     Academics: undefined,
@@ -72,7 +72,7 @@ const BottomNavigator = () => {
                     ),
                 }} ></Tab.Screen>
             }
-            <Tab.Screen name='Work' component={Assignment} options={{
+            <Tab.Screen name='Assignment' component={Assignment} options={{
                 tabBarIcon: ({ color, size }) => (
                     <Icon name="clipboard-text" color={color} size={size} />
                 ),

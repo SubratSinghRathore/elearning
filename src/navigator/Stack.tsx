@@ -13,7 +13,6 @@ import { ActivityIndicator, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ImageViewer from '../components/ImageViewer';
 import TakeAssessment from '../pages/assignment/TakeAssessment';
-import Assignments from '../pages/assignment/Assignment';
 
 export type RootStackParamList = {
   OnBoarding: undefined;
@@ -48,7 +47,6 @@ export type RootStackParamList = {
     enableShare?: boolean;
     onClose?: () => void;
   };
-  Assignments: undefined;
   TakeAssessment: {
     assessmentId: string;
   };
@@ -117,7 +115,7 @@ const RootStack: React.FC = () => {
           />
           <Stack.Screen
             name="TakeAssessment"
-            component={Assignments}
+            component={TakeAssessment}
             options={{
               headerShown: false,
               animation: 'slide_from_right',

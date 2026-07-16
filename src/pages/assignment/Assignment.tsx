@@ -17,6 +17,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import api from '../../api/axios';
 import { RootStackParamList } from '../../navigator/Stack'; // adjust path
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useAuth } from '../../context/AuthContext';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -72,6 +73,7 @@ const Assignments = () => {
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [totalAssessments, setTotalAssessments] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
+  const { user } = useAuth();
 
   const fetchAssessments = async () => {
     try {
@@ -145,11 +147,11 @@ const Assignments = () => {
     return subject?.name || 'N/A';
   };
 
-  const handleStartTest = (assessmentId: string) => {console.log(assessmentId)
+  const handleStartTest = (assessmentId: string) => {
     navigation.navigate("TakeAssessment", {assessmentId});
   };
 
-  const renderAssessmentItem = ({ item }: { item: Assessment }) => {console.log(item)
+  const renderAssessmentItem = ({ item }: { item: Assessment }) => {
     const difficultyColor = getDifficultyColor(item.difficulty);
 
     return (
@@ -200,13 +202,13 @@ const Assignments = () => {
           )}
         </View>
 
-        <TouchableOpacity
+        {user?.role != 'TEACHER'? <TouchableOpacity
           style={styles.startButton}
           onPress={() => handleStartTest(item.id)}
         >
           <Icon name="play-circle" size={20} color="#FFF" />
           <Text style={styles.startButtonText}>Start Test</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> : null}
       </View>
     );
   };

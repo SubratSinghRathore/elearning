@@ -66,7 +66,7 @@ interface AssessmentResult {
   submittedAt: string;
 }
 
-const TakeAssessment = () => {
+const TakeAssessment = () => {console.log("hi")
   const navigation = useNavigation();
   const route = useRoute();
   const { assessmentId } = route.params as { assessmentId: string };
@@ -450,7 +450,7 @@ const TakeAssessment = () => {
           disabled={isFirstQuestion}
         >
           <Icon name="chevron-left" size={20} color={isFirstQuestion ? '#999' : '#4F46E5'} />
-          <Text style={[styles.footerButtonText, isFirstQuestion && styles.disabledText]}>Previous</Text>
+          <Text style={[styles.footerPreviousButtonText, isFirstQuestion && styles.disabledText]}>Previous</Text>
         </TouchableOpacity>
 
         {isLastQuestion ? (
@@ -473,7 +473,7 @@ const TakeAssessment = () => {
             style={[styles.footerButton, styles.nextButton]}
             onPress={handleNext}
           >
-            <Text style={styles.footerButtonText}>Next</Text>
+            <Text style={styles.footerNextButtonText}>Next</Text>
             <Icon name="chevron-right" size={20} color="#FFF" />
           </TouchableOpacity>
         )}
@@ -749,10 +749,15 @@ const styles = StyleSheet.create({
   submitButton: {
     backgroundColor: '#4F46E5',
   },
-  footerButtonText: {
+  footerPreviousButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#4F46E5',
+  },
+  footerNextButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
   },
   submitButtonText: {
     fontSize: 16,
