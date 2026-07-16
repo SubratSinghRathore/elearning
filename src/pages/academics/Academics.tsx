@@ -21,12 +21,12 @@ import SubjectsScreen from './pages/SubjectScreen';
 // import PeopleScreen from './academics/PeopleScreen';
 import TeachersScreen from './pages/TeachersScreen';
 import AdmissionsScreen from './pages/AdmissionsScreen';
-// import StudentsScreen from './academics/StudentsScreen';
+import AddAdmission from './pages/AddAdmission';
 // import TeachingScreen from './academics/TeachingScreen';
 // import CoursesScreen from './academics/CoursesScreen';
 // import LiveClassesScreen from './academics/LiveClassesScreen';
 // import GroupStudyScreen from './academics/GroupStudyScreen';
-// import AssignmentsScreen from './academics/AssignmentsScreen';
+import AssignmentsScreen from './pages/AssingmentScreen';
 import CreateAssessmentScreen from './pages/CreateAssignment';
 // import LearningContentScreen from './academics/LearningContentScreen';
 // import ContentLibraryScreen from './academics/ContentLibraryScreen';
@@ -98,13 +98,13 @@ const Academics = () => {
           color: '#1E88E5',
           component: TeachersScreen 
         },
-        // { 
-        //   id: '2-2', 
-        //   name: 'Students', 
-        //   icon: 'user', 
-        //   color: '#43A047',
-        //   component: StudentsScreen 
-        // },
+        { 
+          id: '2-2', 
+          name: 'Add Student', 
+          icon: 'user', 
+          color: '#43A047',
+          component: AddAdmission 
+        },
         { 
           id: '2-3', 
           name: 'Admissions', 
@@ -127,6 +127,13 @@ const Academics = () => {
       icon: 'monitor',
       color: '#FF6F00',
       subCategories: [
+                { 
+          id: '4-1', 
+          name: 'Assignments', 
+          icon: 'file-text', 
+          color: '#F57C00',
+          component: AssignmentsScreen 
+        },
         // { 
         //   id: '3-1', 
         //   name: 'Teaching', 
@@ -149,13 +156,6 @@ const Academics = () => {
       icon: 'file-text',
       color: '#7B1FA2',
       subCategories: [
-    //     { 
-    //       id: '4-1', 
-    //       name: 'Assignments', 
-    //       icon: 'file-text', 
-    //       color: '#F57C00',
-    //       component: AssignmentsScreen 
-    //     },
         { 
           id: '4-2', 
           name: 'Create Assessment', 

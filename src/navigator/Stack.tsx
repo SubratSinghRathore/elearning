@@ -12,6 +12,8 @@ import ReadNotification from '../pages/notification/ReadNotification';
 import { ActivityIndicator, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ImageViewer from '../components/ImageViewer';
+import TakeAssessment from '../pages/assignment/TakeAssessment';
+import Assignments from '../pages/assignment/Assignment';
 
 export type RootStackParamList = {
   OnBoarding: undefined;
@@ -46,6 +48,10 @@ export type RootStackParamList = {
     enableShare?: boolean;
     onClose?: () => void;
   };
+  Assignments: undefined;
+  TakeAssessment: {
+    assessmentId: string;
+  };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -53,7 +59,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const RootStack: React.FC = () => {
   const { isAuthenticated, loading } = useAuth();
   const [initialRoute, setInitialRoute] = useState<'OnBoarding' | 'BottomTabs'>('OnBoarding');
-  
+
   return (
     <Stack.Navigator
       screenOptions={{ headerShown: false }}
@@ -107,6 +113,14 @@ const RootStack: React.FC = () => {
               headerShown: false,
               presentation: 'fullScreenModal',
               animation: 'fade',
+            }}
+          />
+          <Stack.Screen
+            name="TakeAssessment"
+            component={Assignments}
+            options={{
+              headerShown: false,
+              animation: 'slide_from_right',
             }}
           />
         </>
