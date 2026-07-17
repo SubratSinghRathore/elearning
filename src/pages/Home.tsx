@@ -229,13 +229,13 @@ const Home = ({ navigation }: any) => {
         </View>
 
         {/* Live Classes Section */}
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Live Classes</Text>
-            <TouchableOpacity onPress={() => navigation.navigate("Live")}>
-              <Text style={styles.seeAllText}>See all</Text>
-            </TouchableOpacity>
-          </View>
-          <LiveClasses navigation={navigation} />
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Live Classes</Text>
+          <TouchableOpacity onPress={() => navigation.navigate("Live")}>
+            <Text style={styles.seeAllText}>See all</Text>
+          </TouchableOpacity>
+        </View>
+        <LiveClasses navigation={navigation} />
 
         {/* Extra bottom space */}
         <View style={styles.securityNotice}>
@@ -428,43 +428,43 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   statsContainer: {
-  flexDirection: "row",
-  justifyContent: "space-between",
-  paddingHorizontal: 16,
-  marginVertical: 16,
-  gap: 10,
-},
-statCard: {
-  flex: 1,
-  backgroundColor: "#FFFFFF",
-  paddingVertical: 14,
-  paddingHorizontal: 6,
-  borderRadius: 14,
-  alignItems: "center",
-  justifyContent: "center",
-  minHeight: 80,
-  shadowColor: "#000",
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.06,
-  shadowRadius: 10,
-  elevation: 3,
-  borderWidth: 1,
-  borderColor: "#F0F0F0",
-},
-statNumber: {
-  fontSize: 22,
-  fontWeight: "700",
-  color: "#111827",
-  marginBottom: 4,
-},
-statLabel: {
-  fontSize: 10,
-  color: "#6B7280",
-  fontWeight: "600",
-  textAlign: "center",
-  textTransform: "uppercase",
-  letterSpacing: 0.8,
-},
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    marginVertical: 16,
+    gap: 10,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+    paddingVertical: 14,
+    paddingHorizontal: 6,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 80,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+  },
+  statNumber: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#111827",
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 10,
+    color: "#6B7280",
+    fontWeight: "600",
+    textAlign: "center",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",

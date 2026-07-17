@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api/axios';
+import { requestNotificationPermission } from '../utils/getFCMToken';
 
 interface User {
   id: string;
@@ -103,7 +104,22 @@ export const AuthProvider = ({
       // await AsyncStorage.setItem('userGender', response.data.data.personalInfo.gender);
       // await AsyncStorage.setItem('userId', response.data.data.id);
 
+      //try sending fcn token
+      try {
+        const fcmToken = await requestNotificationPermission();
+
+        if (fcmToken) {
+          const fcmTokenResponse = await api.post('/users/fcm-token', {
+            token: fcmToken,
+          });
+
+          console.log(fcmTokenResponse.data);
+        }
+      } catch (error) {
+        console.log(error);
+      }
       return { success: true };
+
     } catch (error: any) {
       console.log(error);
 

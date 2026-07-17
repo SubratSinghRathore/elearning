@@ -82,7 +82,7 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
   const hideNavigationBar = async () => {
     if (Platform.OS === 'android') {
       try {
-        await SystemNavigationBar.hide();
+        // await SystemNavigationBar.hide();
         StatusBar.setHidden(true);
       } catch (error) {
         console.log('Error hiding navigation bar:', error);
@@ -96,7 +96,7 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
   const showNavigationBar = async () => {
     if (Platform.OS === 'android') {
       try {
-        await SystemNavigationBar.show();
+        // await SystemNavigationBar.show();
         StatusBar.setHidden(false);
       } catch (error) {
         console.log('Error showing navigation bar:', error);
@@ -728,14 +728,14 @@ const VideoCall: React.FC<VideoCallProps> = ({ navigation, route }) => {
               <Text style={styles.controlButtonText}>{video ? 'Video On' : 'Video Off'}</Text>
             </TouchableOpacity>}
 
-            {participantRole == 'TEACHER' && <TouchableOpacity
+            {/* {participantRole == 'TEACHER' && <TouchableOpacity
               style={[styles.controlButton, isHandRaised && styles.controlButtonActive]}
               onPress={toggleScreenShare}
             >
               <Icon name="monitor" size={22} color={isScreenShare ? '#FFD700' : '#FFFFFF'} />
               <Text style={styles.controlButtonText}>{isScreenShare ? 'stop' : 'share'}</Text>
             </TouchableOpacity>
-            }
+            } */}
 
             <TouchableOpacity
               style={[styles.controlButton, isHandRaised && styles.controlButtonActive]}

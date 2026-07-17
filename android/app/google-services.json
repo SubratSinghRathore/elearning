@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "935087162923",
+    "project_id": "e-learning-8ffa2",
+    "storage_bucket": "e-learning-8ffa2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:935087162923:android:ccae138a6ce02c73654c6e",
+        "android_client_info": {
+          "package_name": "com.riveyra"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBkzimPiPQAoIr2g3kI9P9aqRHizqBVV_4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
