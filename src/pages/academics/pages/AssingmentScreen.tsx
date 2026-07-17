@@ -210,7 +210,7 @@ const AssignmentsScreen = () => {
   const confirmPublish = async (id: string) => {
     try {
       setLoading(true);
-      const response = await api.put(`/assessments/${id}/publish`);
+      const response = await api.patch(`/assessments/${id}/publish`);
       
       if (response.data.success) {
         Alert.alert('Success', 'Assessment published successfully');

@@ -9,6 +9,9 @@ import {
   ActivityIndicator,
   Alert,
   SafeAreaView,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -66,7 +69,7 @@ interface AssessmentResult {
   submittedAt: string;
 }
 
-const TakeAssessment = () => {console.log("hi")
+const TakeAssessment = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const { assessmentId } = route.params as { assessmentId: string };
@@ -107,6 +110,13 @@ const TakeAssessment = () => {console.log("hi")
     setAnswers((prev) => ({
       ...prev,
       [questionId]: answer,
+    }));
+  };
+
+  const handleTextAnswerChange = (questionId: string, text: string) => {
+    setAnswers((prev) => ({
+      ...prev,
+      [questionId]: text,
     }));
   };
 
@@ -199,6 +209,10 @@ const TakeAssessment = () => {console.log("hi")
 
   const getOptionLetter = (index: number) => {
     return String.fromCharCode(65 + index);
+  };
+
+  const isQuestionAnswered = (questionId: string) => {
+    return answers[questionId] !== undefined && answers[questionId].trim() !== '';
   };
 
   if (loading) {
@@ -319,6 +333,7 @@ const TakeAssessment = () => {console.log("hi")
   const totalQuestions = assessment.questions.length;
   const isLastQuestion = currentQuestionIndex === totalQuestions - 1;
   const isFirstQuestion = currentQuestionIndex === 0;
+  const isAnswered = isQuestionAnswered(currentQuestion.id);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -359,88 +374,157 @@ const TakeAssessment = () => {console.log("hi")
       </View>
 
       {/* Question */}
-      <ScrollView style={styles.questionContainer} showsVerticalScrollIndicator={false}>
-        <View style={styles.questionCard}>
-          <View style={styles.questionHeader}>
-            <View style={styles.questionNumber}>
-              <Text style={styles.questionNumberText}>Q{currentQuestion.number}</Text>
+      <KeyboardAvoidingView 
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+      >
+        <ScrollView 
+          style={styles.questionContainer} 
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.questionCard}>
+            <View style={styles.questionHeader}>
+              <View style={styles.questionNumber}>
+                <Text style={styles.questionNumberText}>Q{currentQuestion.number}</Text>
+              </View>
+              <View style={styles.questionMeta}>
+                <View style={[styles.difficultyBadge, { backgroundColor: getDifficultyColor(currentQuestion.difficulty) + '20' }]}>
+                  <Text style={[styles.difficultyText, { color: getDifficultyColor(currentQuestion.difficulty) }]}>
+                    {currentQuestion.difficulty}
+                  </Text>
+                </View>
+                <Text style={styles.questionMarks}>{currentQuestion.marks} marks</Text>
+              </View>
             </View>
-            <View style={styles.questionMeta}>
-              <View style={[styles.difficultyBadge, { backgroundColor: getDifficultyColor(currentQuestion.difficulty) + '20' }]}>
-                <Text style={[styles.difficultyText, { color: getDifficultyColor(currentQuestion.difficulty) }]}>
-                  {currentQuestion.difficulty}
+
+            <Text style={styles.questionText}>{currentQuestion.question}</Text>
+
+            {/* MCQ Options */}
+            {currentQuestion.type === 'MCQ' && currentQuestion.options && (
+              <View style={styles.optionsContainer}>
+                {currentQuestion.options.map((option, index) => {
+                  const isSelected = answers[currentQuestion.id] === option;
+                  return (
+                    <TouchableOpacity
+                      key={index}
+                      style={[
+                        styles.optionButton,
+                        isSelected && styles.optionButtonSelected,
+                      ]}
+                      onPress={() => handleSelectAnswer(currentQuestion.id, option)}
+                    >
+                      <View style={[
+                        styles.optionCircle,
+                        isSelected && styles.optionCircleSelected,
+                      ]}>
+                        <Text style={[
+                          styles.optionLetter,
+                          isSelected && styles.optionLetterSelected,
+                        ]}>
+                          {getOptionLetter(index)}
+                        </Text>
+                      </View>
+                      <Text style={[
+                        styles.optionText,
+                        isSelected && styles.optionTextSelected,
+                      ]}>
+                        {option}
+                      </Text>
+                      {isSelected && (
+                        <Icon name="check-circle" size={20} color="#4F46E5" />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+
+            {/* True/False Options */}
+            {currentQuestion.type === 'TRUE_FALSE' && currentQuestion.options && (
+              <View style={styles.optionsContainer}>
+                {currentQuestion.options.map((option, index) => {
+                  const isSelected = answers[currentQuestion.id] === option;
+                  return (
+                    <TouchableOpacity
+                      key={index}
+                      style={[
+                        styles.optionButton,
+                        isSelected && styles.optionButtonSelected,
+                      ]}
+                      onPress={() => handleSelectAnswer(currentQuestion.id, option)}
+                    >
+                      <View style={[
+                        styles.optionCircle,
+                        isSelected && styles.optionCircleSelected,
+                      ]}>
+                        <Text style={[
+                          styles.optionLetter,
+                          isSelected && styles.optionLetterSelected,
+                        ]}>
+                          {getOptionLetter(index)}
+                        </Text>
+                      </View>
+                      <Text style={[
+                        styles.optionText,
+                        isSelected && styles.optionTextSelected,
+                      ]}>
+                        {option}
+                      </Text>
+                      {isSelected && (
+                        <Icon name="check-circle" size={20} color="#4F46E5" />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+
+            {/* Question Answer - Text Input */}
+            {(currentQuestion.type === 'QUESTION_ANSWER' || currentQuestion.type === 'QUESTION_ANSWERE') && (
+              <View style={styles.textAnswerContainer}>
+                <TextInput
+                  style={styles.textAnswerInput}
+                  placeholder="Type your answer here..."
+                  placeholderTextColor="#999"
+                  value={answers[currentQuestion.id] || ''}
+                  onChangeText={(text) => handleTextAnswerChange(currentQuestion.id, text)}
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                />
+                <Text style={styles.textAnswerHint}>
+                  Write a detailed answer for this question.
                 </Text>
               </View>
-              <Text style={styles.questionMarks}>{currentQuestion.marks} marks</Text>
+            )}
+
+            {/* Question Navigator */}
+            <View style={styles.questionNavigator}>
+              {assessment.questions.map((q, index) => (
+                <TouchableOpacity
+                  key={q.id}
+                  style={[
+                    styles.questionDot,
+                    index === currentQuestionIndex && styles.questionDotActive,
+                    isQuestionAnswered(q.id) && styles.questionDotAnswered,
+                  ]}
+                  onPress={() => setCurrentQuestionIndex(index)}
+                >
+                  <Text style={[
+                    styles.questionDotText,
+                    index === currentQuestionIndex && styles.questionDotTextActive,
+                    isQuestionAnswered(q.id) && styles.questionDotTextAnswered,
+                  ]}>
+                    {index + 1}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
-
-          <Text style={styles.questionText}>{currentQuestion.question}</Text>
-
-          {/* Options */}
-          {currentQuestion.type === 'MCQ' && currentQuestion.options && (
-            <View style={styles.optionsContainer}>
-              {currentQuestion.options.map((option, index) => {
-                const isSelected = answers[currentQuestion.id] === option;
-                return (
-                  <TouchableOpacity
-                    key={index}
-                    style={[
-                      styles.optionButton,
-                      isSelected && styles.optionButtonSelected,
-                    ]}
-                    onPress={() => handleSelectAnswer(currentQuestion.id, option)}
-                  >
-                    <View style={[
-                      styles.optionCircle,
-                      isSelected && styles.optionCircleSelected,
-                    ]}>
-                      <Text style={[
-                        styles.optionLetter,
-                        isSelected && styles.optionLetterSelected,
-                      ]}>
-                        {getOptionLetter(index)}
-                      </Text>
-                    </View>
-                    <Text style={[
-                      styles.optionText,
-                      isSelected && styles.optionTextSelected,
-                    ]}>
-                      {option}
-                    </Text>
-                    {isSelected && (
-                      <Icon name="check-circle" size={20} color="#4F46E5" />
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          )}
-
-          {/* Question Navigator */}
-          <View style={styles.questionNavigator}>
-            {assessment.questions.map((q, index) => (
-              <TouchableOpacity
-                key={q.id}
-                style={[
-                  styles.questionDot,
-                  index === currentQuestionIndex && styles.questionDotActive,
-                  answers[q.id] && styles.questionDotAnswered,
-                ]}
-                onPress={() => setCurrentQuestionIndex(index)}
-              >
-                <Text style={[
-                  styles.questionDotText,
-                  index === currentQuestionIndex && styles.questionDotTextActive,
-                  answers[q.id] && styles.questionDotTextAnswered,
-                ]}>
-                  {index + 1}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Footer */}
       <View style={styles.footer}>
@@ -533,6 +617,9 @@ const styles = StyleSheet.create({
   },
   headerRight: {
     width: 32,
+  },
+  keyboardAvoidingView: {
+    flex: 1,
   },
   infoBar: {
     backgroundColor: '#FFFFFF',
@@ -683,6 +770,26 @@ const styles = StyleSheet.create({
   },
   optionTextSelected: {
     color: '#4F46E5',
+  },
+  textAnswerContainer: {
+    marginTop: 4,
+  },
+  textAnswerInput: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    minHeight: 120,
+    textAlignVertical: 'top',
+  },
+  textAnswerHint: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 6,
+    fontStyle: 'italic',
   },
   questionNavigator: {
     flexDirection: 'row',

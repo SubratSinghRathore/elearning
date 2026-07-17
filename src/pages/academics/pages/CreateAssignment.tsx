@@ -83,7 +83,7 @@ const CreateAssessment = () => {
     const assessmentTypes = [
         { label: 'Quiz', value: 'QUIZ', description: 'Short objective questions.' },
         { label: 'Assignment', value: 'ASSIGNMENT', description: 'Long-form descriptive questions.' },
-        { label: 'Question Paper', value: 'QUESTION_PAPER', description: 'Structured exam format.' },
+        { label: 'Question Paper', value: 'QUESTION-PAPER', description: 'Structured exam format.' },
     ];
 
     const difficulties = [
@@ -96,7 +96,7 @@ const CreateAssessment = () => {
     const questionTypes = [
         { label: 'MCQ', value: 'MCQ' },
         { label: 'True / False', value: 'TRUE_FALSE' },
-        { label: 'Question Answer', value: 'QUESTION_ANSWER' },
+        { label: 'Question Answer', value: 'QUESTION_ANSWERE' },
     ];
 
     useEffect(() => {
