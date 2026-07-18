@@ -72,11 +72,13 @@ const BottomNavigator = () => {
                     ),
                 }} ></Tab.Screen>
             }
-            <Tab.Screen name='Assignment' component={Assignment} options={{
-                tabBarIcon: ({ color, size }) => (
-                    <Icon name="clipboard-text" color={color} size={size} />
-                ),
-            }} ></Tab.Screen>
+            {user?.role !== 'TEACHER' &&
+                <Tab.Screen name='Assignment' component={Assignment} options={{
+                    tabBarIcon: ({ color, size }) => (
+                        <Icon name="clipboard-text" color={color} size={size} />
+                    ),
+                }} ></Tab.Screen>
+            }
             <Tab.Screen name='Profile' component={Profile} options={{
                 tabBarIcon: ({ color, size }) => (
                     <Icon name="account" color={color} size={size} />
