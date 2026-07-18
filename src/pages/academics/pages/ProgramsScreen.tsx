@@ -60,6 +60,7 @@ const ProgramsScreen = () => {
   const [menuVisible, setMenuVisible] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   
   // Form states
   const [formData, setFormData] = useState({
@@ -75,6 +76,7 @@ const ProgramsScreen = () => {
     featured: false,
     isActive: true,
   });
+  const [benefitInput, setBenefitInput] = useState('');
   const [thumbnail, setThumbnail] = useState<any>(null);
   const [thumbnailUrl, setThumbnailUrl] = useState('');
   const [isUploading, setIsUploading] = useState(false);
@@ -141,6 +143,7 @@ const ProgramsScreen = () => {
         featured: selectedProgram.featured || false,
         isActive: selectedProgram.isActive !== undefined ? selectedProgram.isActive : true,
       });
+      setBenefitInput('');
       setThumbnailUrl(selectedProgram.thumbnail || '');
       setModalVisible(true);
     }
@@ -199,6 +202,7 @@ const ProgramsScreen = () => {
       featured: false,
       isActive: true,
     });
+    setBenefitInput('');
     setThumbnail(null);
     setThumbnailUrl('');
     setModalVisible(true);
@@ -256,20 +260,17 @@ const ProgramsScreen = () => {
     }
   };
 
+  // Updated: Add benefit with input field
   const handleAddBenefit = () => {
-    Alert.prompt(
-      'Add Benefit',
-      'Enter benefit description:',
-      (text) => {
-        if (text && text.trim()) {
-          setFormData({
-            ...formData,
-            benefits: [...formData.benefits, text.trim()],
-          });
-        }
-      },
-      'plain-text'
-    );
+    if (benefitInput.trim()) {
+      setFormData({
+        ...formData,
+        benefits: [...formData.benefits, benefitInput.trim()],
+      });
+      setBenefitInput('');
+    } else {
+      Alert.alert('Error', 'Please enter a benefit description');
+    }
   };
 
   const handleRemoveBenefit = (index: number) => {
@@ -313,7 +314,7 @@ const ProgramsScreen = () => {
       return;
     }
 
-    setLoading(true);
+    setSubmitting(true);
     try {
       const submitData = {
         ...formData,
@@ -337,15 +338,18 @@ const ProgramsScreen = () => {
           isEditing ? 'Program updated successfully!' : 'Program created successfully!',
           [{ text: 'OK', onPress: () => {
             setModalVisible(false);
+            setSubmitting(false);
             fetchPrograms();
           }}]
         );
+      } else {
+        Alert.alert('Error', response.data.message || 'Failed to save program');
+        setSubmitting(false);
       }
     } catch (error: any) {
       console.error('Submit error:', error);
       Alert.alert('Error', error.response?.data?.message || 'Failed to save program');
-    } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -463,7 +467,11 @@ const ProgramsScreen = () => {
       animationType="slide"
       transparent={true}
       visible={modalVisible}
-      onRequestClose={() => setModalVisible(false)}
+      onRequestClose={() => {
+        if (!submitting) {
+          setModalVisible(false);
+        }
+      }}
     >
       <View style={styles.formModalOverlay}>
         <View style={styles.formModalContent}>
@@ -471,7 +479,14 @@ const ProgramsScreen = () => {
             <Text style={styles.formModalTitle}>
               {isEditing ? 'Edit Program' : 'Add New Program'}
             </Text>
-            <TouchableOpacity onPress={() => setModalVisible(false)}>
+            <TouchableOpacity 
+              onPress={() => {
+                if (!submitting) {
+                  setModalVisible(false);
+                }
+              }}
+              disabled={submitting}
+            >
               <Icon name="x" size={24} color="#1A1A1A" />
             </TouchableOpacity>
           </View>
@@ -485,6 +500,7 @@ const ProgramsScreen = () => {
                 placeholder="e.g. B.Sc., M.Sc., MBA"
                 value={formData.name}
                 onChangeText={(text) => setFormData({ ...formData, name: text })}
+                editable={!submitting}
               />
             </View>
 
@@ -496,6 +512,7 @@ const ProgramsScreen = () => {
                 placeholder="e.g. Bachelor of Science"
                 value={formData.fullName}
                 onChangeText={(text) => setFormData({ ...formData, fullName: text })}
+                editable={!submitting}
               />
             </View>
 
@@ -507,6 +524,7 @@ const ProgramsScreen = () => {
                   selectedValue={formData.programType}
                   onValueChange={(value) => setFormData({ ...formData, programType: value })}
                   style={styles.picker}
+                  enabled={!submitting}
                 >
                   <Picker.Item label="Select program type" value="" />
                   {programTypes.map((type) => (
@@ -522,7 +540,7 @@ const ProgramsScreen = () => {
               <TouchableOpacity
                 style={styles.uploadButton}
                 onPress={handleImagePick}
-                disabled={isUploading}
+                disabled={isUploading || submitting}
               >
                 {isUploading ? (
                   <ActivityIndicator size="small" color="#4F46E5" />
@@ -563,6 +581,7 @@ const ProgramsScreen = () => {
                 multiline
                 numberOfLines={4}
                 textAlignVertical="top"
+                editable={!submitting}
               />
               <Text style={styles.charCount}>
                 {formData.description.length}/20 characters minimum
@@ -578,6 +597,7 @@ const ProgramsScreen = () => {
                 value={formData.durationMonths}
                 onChangeText={(text) => setFormData({ ...formData, durationMonths: text })}
                 keyboardType="numeric"
+                editable={!submitting}
               />
             </View>
 
@@ -589,6 +609,7 @@ const ProgramsScreen = () => {
                   selectedValue={formData.mode}
                   onValueChange={(value) => setFormData({ ...formData, mode: value })}
                   style={styles.picker}
+                  enabled={!submitting}
                 >
                   <Picker.Item label="Select mode" value="" />
                   {modes.map((mode) => (
@@ -607,6 +628,7 @@ const ProgramsScreen = () => {
                 value={formData.feeAmount}
                 onChangeText={(text) => setFormData({ ...formData, feeAmount: text })}
                 keyboardType="numeric"
+                editable={!submitting}
               />
             </View>
 
@@ -618,6 +640,7 @@ const ProgramsScreen = () => {
                   selectedValue={formData.feeType}
                   onValueChange={(value) => setFormData({ ...formData, feeType: value })}
                   style={styles.picker}
+                  enabled={!submitting}
                 >
                   <Picker.Item label="Select fee type" value="" />
                   {feeTypes.map((type) => (
@@ -627,19 +650,33 @@ const ProgramsScreen = () => {
               </View>
             </View>
 
-            {/* Benefits */}
+            {/* Benefits with Input Field */}
             <View style={styles.formGroup}>
               <Text style={styles.formLabel}>Benefits</Text>
-              <TouchableOpacity style={styles.addButton} onPress={handleAddBenefit}>
-                <Icon name="plus" size={18} color="#FFF" />
-                <Text style={styles.addButtonText}>Add Benefit</Text>
-              </TouchableOpacity>
+              <View style={styles.benefitInputContainer}>
+                <TextInput
+                  style={styles.benefitInput}
+                  placeholder="Enter benefit description"
+                  value={benefitInput}
+                  onChangeText={setBenefitInput}
+                  editable={!submitting}
+                />
+                <TouchableOpacity 
+                  style={styles.addBenefitButton} 
+                  onPress={handleAddBenefit}
+                  disabled={submitting}
+                >
+                  <Icon name="plus" size={20} color="#FFF" />
+                </TouchableOpacity>
+              </View>
+              
               {formData.benefits.map((benefit, index) => (
                 <View key={index} style={styles.benefitItem}>
                   <Text style={styles.benefitText}>{benefit}</Text>
                   <TouchableOpacity
                     onPress={() => handleRemoveBenefit(index)}
                     style={styles.removeButton}
+                    disabled={submitting}
                   >
                     <Icon name="x" size={18} color="#E53935" />
                   </TouchableOpacity>
@@ -654,6 +691,7 @@ const ProgramsScreen = () => {
                 <TouchableOpacity
                   style={[styles.toggleButton, formData.featured && styles.toggleActive]}
                   onPress={() => setFormData({ ...formData, featured: !formData.featured })}
+                  disabled={submitting}
                 >
                   <Text style={styles.toggleText}>
                     {formData.featured ? 'Yes' : 'No'}
@@ -666,6 +704,7 @@ const ProgramsScreen = () => {
                 <TouchableOpacity
                   style={[styles.toggleButton, formData.isActive && styles.toggleActive]}
                   onPress={() => setFormData({ ...formData, isActive: !formData.isActive })}
+                  disabled={submitting}
                 >
                   <Text style={styles.toggleText}>
                     {formData.isActive ? 'Active' : 'Inactive'}
@@ -676,11 +715,11 @@ const ProgramsScreen = () => {
 
             {/* Submit Button */}
             <TouchableOpacity
-              style={[styles.submitButton, loading && styles.disabledButton]}
+              style={[styles.submitButton, (loading || submitting) && styles.disabledButton]}
               onPress={handleSubmit}
-              disabled={loading}
+              disabled={loading || submitting}
             >
-              {loading ? (
+              {submitting ? (
                 <ActivityIndicator size="small" color="#FFF" />
               ) : (
                 <Text style={styles.submitButtonText}>
@@ -1092,20 +1131,29 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 8,
   },
-  addButton: {
+  benefitInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#4F46E5',
-    borderRadius: 8,
-    padding: 10,
     marginBottom: 8,
+    gap: 8,
   },
-  addButtonText: {
-    color: '#FFF',
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 6,
+  benefitInput: {
+    flex: 1,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 15,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  addBenefitButton: {
+    backgroundColor: '#4F46E5',
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   benefitItem: {
     flexDirection: 'row',

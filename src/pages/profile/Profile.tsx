@@ -163,7 +163,8 @@ const Profile = () => {
 
   const getProfileImageUrl = (path: string): string | undefined => {
     if (!path) return undefined;
-    return `https://storage.mssplonline.in/e-learning/${path}`;
+    // return `https://storage.mssplonline.in/e-learning/${path}`;
+    return path
   };
 
   if (loading) {

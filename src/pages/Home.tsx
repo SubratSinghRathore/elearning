@@ -56,16 +56,6 @@ const Home = ({ navigation }: any) => {
     }
   };
 
-  // Mock data for categories and recommendations
-  const popularCategories = [
-    { id: "1", name: "Coding", icon: "code" },
-    { id: "2", name: "Design", icon: "pen-tool" },
-    { id: "3", name: "Business", icon: "briefcase" },
-    { id: "4", name: "Marketing", icon: "trending-up" },
-    { id: "5", name: "Data Science", icon: "database" },
-  ];
-
-
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
@@ -114,18 +104,6 @@ const Home = ({ navigation }: any) => {
     fetchDashboardData();
   };
 
-  const renderCategory = ({ item }: any) => (
-    <TouchableOpacity
-      style={styles.categoryCard}
-      onPress={() => navigation.navigate("CategoryCourses", { categoryId: item.id })}
-    >
-      <View style={styles.categoryIconContainer}>
-        <Icon name={item.icon} size={24} color="#4F46E5" />
-      </View>
-      <Text style={styles.categoryName}>{item.name}</Text>
-    </TouchableOpacity>
-  );
-
   if (loading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
@@ -152,6 +130,7 @@ const Home = ({ navigation }: any) => {
             <Text style={styles.userName}>
               {userData?.personalInfo?.name || "User"}
             </Text>
+            <Text style={styles.greeting}>Keep Learning, Keep Growing 🚀,</Text>
           </View>
           <View style={styles.headerActions}>
             <TouchableOpacity
@@ -182,51 +161,55 @@ const Home = ({ navigation }: any) => {
         </View>
 
         {/* Stats Section */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{studentStats?.subjectCount || 0}</Text>
-            <Text style={styles.statLabel}>Subjects</Text>
+        {user?.role === "TEACHER" &&
+          <View style={styles.statsContainer}>
+            <View style={styles.statCard}>
+              <View style={styles.statsIconBox}>
+                <Icon name="book-open" color={"#3151df"} size={22}/>
+              </View>
+              <Text style={styles.statNumber}>{studentStats?.subjectCount || 0}</Text>
+              <Text style={styles.statLabel}>All Subjects</Text>
+              <View style={[styles.statsUnderline, {backgroundColor: '#3151df'}]}/>
+            </View>
+            <View style={styles.statCard}>
+              <View style={styles.statsIconBox}>
+                <Icon name="video" color={"#269f53"} size={22}/>
+              </View>
+              <Text style={styles.statNumber}>{studentStats?.liveClassCount || 0}</Text>
+              <Text style={styles.statLabel}>Live Classes</Text>
+              <View style={[styles.statsUnderline, {backgroundColor: '#269f53'}]}/>
+            </View>
+            <View style={styles.statCard}>
+              <View style={styles.statsIconBox}>
+                <Icon name="file-text" color={"#f47029"} size={22}/>
+              </View>
+              <Text style={styles.statNumber}>{studentStats?.contentCount || 0}</Text>
+              <Text style={styles.statLabel}>Study Material</Text>
+              <View style={[styles.statsUnderline, {backgroundColor: '#f47029'}]}/>
+            </View>
+            <View style={styles.statCard}>
+              <View style={styles.statsIconBox}>
+                <Icon name="users" color={"#3157ff"} size={22}/>
+              </View>
+              <Text style={styles.statNumber}>{studentStats?.groupStudyCount || 0}</Text>
+              <Text style={styles.statLabel}>Study Groups</Text>
+              <View style={[styles.statsUnderline, {backgroundColor: '#3157ff'}]}/>
+            </View>
           </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{studentStats?.liveClassCount || 0}</Text>
-            <Text style={styles.statLabel}>Live Classes</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{studentStats?.contentCount || 0}</Text>
-            <Text style={styles.statLabel}>Study Material</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{studentStats?.groupStudyCount || 0}</Text>
-            <Text style={styles.statLabel}>Study Groups</Text>
-          </View>
-        </View>
-
-        {/* Popular Categories */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Popular Categories</Text>
-        </View>
-
-        <FlatList
-          data={popularCategories}
-          renderItem={renderCategory}
-          keyExtractor={(item) => item.id}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.categoriesList}
-          contentContainerStyle={styles.categoriesListContent}
-        />
+        }
 
         {user?.role === 'TEACHER' && <ScoreBoardSmall />}
 
         {/* Group Study Section */}
-        <View style={styles.groupStudySection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Group Study</Text>
-          </View>
-          <View style={styles.groupStudyWrapper}>
-            <GroupStudy navigation={navigation} />
-          </View>
-        </View>
+        {user?.role !== 'TEACHER' &&
+          <View style={styles.groupStudySection}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Group Study</Text>
+            </View>
+            <View style={styles.groupStudyWrapper}>
+              <GroupStudy navigation={navigation} />
+            </View>
+          </View>}
 
         {/* Live Classes Section */}
         <View style={styles.sectionHeader}>
@@ -247,6 +230,21 @@ const Home = ({ navigation }: any) => {
 };
 
 const styles = StyleSheet.create({
+  statsIconBox:{
+    height: 40,
+    width: 40,
+    borderRadius: 100,
+    backgroundColor: "#94949475",
+    flex: 1,
+    justifyContent: "center",
+    alignItems: 'center'
+  },
+  statsUnderline: {
+    margin: 6,
+    width: 60,
+    height: 4,
+    borderRadius: 20
+  },
   groupStudySection: {
     marginTop: height * 0.01,
     marginBottom: height * 0.02,
@@ -481,13 +479,13 @@ const styles = StyleSheet.create({
     fontSize: width * 0.035,
     color: "#4F46E5",
   },
-  categoriesList: {
-    paddingLeft: width * 0.02,
-    marginBottom: height * 0.03,
-  },
-  categoriesListContent: {
-    paddingHorizontal: width * 0.03,
-  },
+  // categoriesList: {
+  //   paddingLeft: width * 0.02,
+  //   marginBottom: height * 0.03,
+  // },
+  // categoriesListContent: {
+  //   paddingHorizontal: width * 0.03,
+  // },
   categoryCard: {
     alignItems: "center",
     marginRight: width * 0.04,

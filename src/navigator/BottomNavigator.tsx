@@ -65,14 +65,13 @@ const BottomNavigator = () => {
                     <Icon name="file-multiple" color={color} size={size} />
                 ),
             }} ></Tab.Screen>
-            {user?.role === 'TEACHER' &&
+            {user?.role === 'TEACHER' ?
                 <Tab.Screen name='Academics' component={Academics} options={{
                     tabBarIcon: ({ color, size }) => (
                         <Icon name="town-hall" color={color} size={size} />
                     ),
                 }} ></Tab.Screen>
-            }
-            {user?.role !== 'TEACHER' &&
+                :
                 <Tab.Screen name='Assignment' component={Assignment} options={{
                     tabBarIcon: ({ color, size }) => (
                         <Icon name="clipboard-text" color={color} size={size} />
