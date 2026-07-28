@@ -25,6 +25,8 @@ import { WebView } from 'react-native-webview';
 import Video from 'react-native-video';
 import RNFS from 'react-native-fs';
 import api from '../../api/axios';
+import { useNavigation } from '@react-navigation/native';
+import { bucketUrl } from '../../utils/url';
 
 const { width, height } = Dimensions.get('window');
 
@@ -71,7 +73,7 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
   const [hasMore, setHasMore] = useState(true);
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
-  
+
   // Modal states
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
@@ -105,13 +107,13 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
       if (data.success) {
         const newMaterials = data.data.materials || [];
         setHasMore(data.data.pagination?.hasMore || false);
-        
+
         if (reset) {
           setAllMaterials(newMaterials);
         } else {
           setAllMaterials(prev => [...prev, ...newMaterials]);
         }
-        
+
         if (!reset) {
           setPage(prev => prev + 1);
         }
@@ -182,8 +184,6 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
     setSelectedMaterial(material);
     setModalVisible(true);
     setPaused(false);
-    setDownloadProgress(0);
-    handleDownload(material);
   };
 
   const handleShare = async () => {
@@ -235,14 +235,14 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
 
     setDownloading(true);
     setDownloadProgress(0);
-    
+
     const fileUrl = getFileUrl(material.objectKey);
     const fileName = material.file.originalFileName || `${material.title}.${material.materialType.toLowerCase()}`;
-    
-    const downloadDir = Platform.OS === 'android' 
-      ? RNFS.DownloadDirectoryPath 
+
+    const downloadDir = Platform.OS === 'android'
+      ? RNFS.DownloadDirectoryPath
       : RNFS.DocumentDirectoryPath;
-    
+
     const filePath = `${downloadDir}/${fileName}`;
 
     try {
@@ -253,8 +253,8 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
           `"${fileName}" is already saved on your device.`,
           [
             { text: 'OK' },
-            { 
-              text: 'Open File', 
+            {
+              text: 'Open File',
               onPress: () => {
                 if (Platform.OS === 'android') {
                   Alert.alert('Info', 'File saved in Downloads folder');
@@ -298,8 +298,8 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
           `"${fileName}" has been downloaded successfully!`,
           [
             { text: 'OK' },
-            { 
-              text: 'Open File', 
+            {
+              text: 'Open File',
               onPress: () => {
                 if (Platform.OS === 'android') {
                   Alert.alert('Info', 'File saved in Downloads folder');
@@ -402,6 +402,27 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
     );
   };
 
+  const openDocument = () => {
+    console.log(selectedMaterial)
+    const url = bucketUrl(selectedMaterial?.objectKey)
+    switch (selectedMaterial?.materialType) {
+      case 'PDF': {
+        break
+      };
+      case 'IMAGE': {
+        navigation.navigate('ImageViewer', {
+          imageUri: url,
+          imageTitle: 'Content Library',
+          enableDownload: true,
+          enableShare: true,
+        });
+        break
+      };
+      default:
+        break;
+    }
+  };
+
   const renderModalContent = () => {
     if (!selectedMaterial) return null;
 
@@ -469,7 +490,7 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
             style={[
               styles.filterTab,
               (selectedType === item || (item === 'ALL' && !selectedType)) &&
-                styles.filterTabActive,
+              styles.filterTabActive,
             ]}
             onPress={() => handleTypeFilter(item)}
           >
@@ -477,7 +498,7 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
               style={[
                 styles.filterTabText,
                 (selectedType === item || (item === 'ALL' && !selectedType)) &&
-                  styles.filterTabTextActive,
+                styles.filterTabTextActive,
               ]}
             >
               {item}
@@ -578,8 +599,8 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
               </Text>
               <View style={styles.modalHeaderActions}>
                 {/* Download Button */}
-                <TouchableOpacity 
-                  onPress={() => selectedMaterial && handleDownload(selectedMaterial)} 
+                <TouchableOpacity
+                  onPress={() => selectedMaterial && openDocument()}
                   style={styles.modalActionButton}
                   disabled={downloading}
                 >
@@ -592,8 +613,8 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
                   )}
                 </TouchableOpacity>
                 {/* Share Button */}
-                <TouchableOpacity 
-                  onPress={handleShare} 
+                <TouchableOpacity
+                  onPress={handleShare}
                   style={styles.modalActionButton}
                 >
                   <Icon name="share-2" size={22} color="#4F46E5" />
@@ -605,11 +626,11 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
             {downloading && downloadProgress > 0 && downloadProgress < 100 && (
               <View style={styles.progressContainer}>
                 <View style={styles.progressBar}>
-                  <View 
+                  <View
                     style={[
-                      styles.progressFill, 
+                      styles.progressFill,
                       { width: `${downloadProgress}%` }
-                    ]} 
+                    ]}
                   />
                 </View>
                 <Text style={styles.progressText}>

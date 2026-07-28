@@ -1,0 +1,1 @@
+export const bucketUrl = (url: any) => `https://storage.mssplonline.in/e-learning/${url}`;
