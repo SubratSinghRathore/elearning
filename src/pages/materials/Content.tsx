@@ -403,16 +403,21 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
   };
 
   const openDocument = () => {
-    console.log(selectedMaterial)
     const url = bucketUrl(selectedMaterial?.objectKey)
     switch (selectedMaterial?.materialType) {
       case 'PDF': {
+        navigation.navigate('PDFViewer', {
+          pdfUri: url ?? '',
+          pdfTitle: selectedMaterial?.title,
+          enableDownload: true,
+          enableShare: true,
+        });
         break
       };
       case 'IMAGE': {
         navigation.navigate('ImageViewer', {
           imageUri: url,
-          imageTitle: 'Content Library',
+          imageTitle: selectedMaterial?.title,
           enableDownload: true,
           enableShare: true,
         });

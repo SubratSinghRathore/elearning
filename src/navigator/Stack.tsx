@@ -14,6 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import ImageViewer from '../components/ImageViewer';
 import TakeAssessment from '../pages/assignment/TakeAssessment';
 import ScoreBoard from '../pages/scoreBoard/ScoreBoard';
+import PDFViewer from '../components/PDFViewer';
 
 export type RootStackParamList = {
   OnBoarding: undefined;
@@ -44,6 +45,13 @@ export type RootStackParamList = {
   ImageViewer: {
     imageUri: string;
     imageTitle?: string;
+    enableDownload?: boolean;
+    enableShare?: boolean;
+    onClose?: () => void;
+  };
+  PDFViewer: {
+    pdfUri: string;
+    pdfTitle?: string;
     enableDownload?: boolean;
     enableShare?: boolean;
     onClose?: () => void;
@@ -109,6 +117,15 @@ const RootStack: React.FC = () => {
           <Stack.Screen
             name="ImageViewer"
             component={ImageViewer}
+            options={{
+              headerShown: false,
+              presentation: 'fullScreenModal',
+              animation: 'fade',
+            }}
+          />
+          <Stack.Screen
+            name="PDFViewer"
+            component={PDFViewer}
             options={{
               headerShown: false,
               presentation: 'fullScreenModal',
