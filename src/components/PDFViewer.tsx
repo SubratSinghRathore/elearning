@@ -396,33 +396,6 @@ const PDFViewer: React.FC<PDFViewerProps> = () => {
         </View>
       )}
 
-      {/* Footer Controls */}
-      <View style={styles.footer}>
-        <View style={styles.footerControls}>
-          <TouchableOpacity 
-            style={styles.footerButton} 
-            onPress={handleZoomOut}
-          >
-            <Icon name="minus" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.footerButton} 
-            onPress={handleZoomIn}
-          >
-            <Icon name="plus" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity 
-          style={styles.resetButton}
-          onPress={resetZoom}
-        >
-          <Icon name="maximize" size={18} color="#FFFFFF" />
-          <Text style={styles.resetButtonText}>Reset Zoom</Text>
-        </TouchableOpacity>
-      </View>
-
       {/* Gesture Hint */}
       {!pdfError && (
         <View style={styles.gestureHint}>

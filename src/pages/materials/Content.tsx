@@ -605,7 +605,7 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
               <View style={styles.modalHeaderActions}>
                 {/* Download Button */}
                 <TouchableOpacity
-                  onPress={() => selectedMaterial && openDocument()}
+                  onPress={() => selectedMaterial && (openDocument(), setModalVisible(false))}
                   style={styles.modalActionButton}
                   disabled={downloading}
                 >
