@@ -27,6 +27,8 @@ import RNFS from 'react-native-fs';
 import api from '../../api/axios';
 import { useNavigation } from '@react-navigation/native';
 import { bucketUrl } from '../../utils/url';
+import { useAuth } from '../../context/AuthContext';
+import { pick } from '@react-native-documents/picker';
 
 const { width, height } = Dimensions.get('window');
 
@@ -73,7 +75,8 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
   const [hasMore, setHasMore] = useState(true);
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
-
+  const [uploadFile, setUploadFile] = useState(false);
+  const { user } = useAuth()
   // Modal states
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
@@ -143,11 +146,11 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
     // Filter by search query (client-side)
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(material =>
-        material.title.toLowerCase().includes(query) ||
-        material.description.toLowerCase().includes(query) ||
-        material.subject?.name?.toLowerCase().includes(query) ||
-        material.materialType.toLowerCase().includes(query)
+      filtered = filtered?.filter(material =>
+        material.title?.toLowerCase()?.includes(query) ||
+        material.description?.toLowerCase()?.includes(query) ||
+        material.subject?.name?.toLowerCase()?.includes(query) ||
+        material.materialType?.toLowerCase()?.includes(query)
       );
     }
 
@@ -463,9 +466,41 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
     );
   };
 
-  const renderSearch = () => (
-    <View style={styles.searchContainer}>
-      <View style={styles.searchBar}>
+  const handleAddContent = async () => {
+    setUploadFile(true);
+  }
+
+  const renderTeacherSearch = () => (
+    <View style={styles.headContainer}>
+      <View style={styles.searchContainer}>
+        <View style={styles.searchBar}>
+          <Icon name="search" size={20} color="#999" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search materials..."
+            value={searchQuery}
+            onChangeText={handleSearch}
+            returnKeyType="search"
+          />
+          {/* {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => handleSearch('')}>
+              <Icon name="x" size={20} color="#999" />
+            </TouchableOpacity>
+          )} */}
+        </View>
+        <View>
+          <TouchableOpacity style={styles.addProgramButton} onPress={handleAddContent}>
+            <Icon name="plus" size={20} color="#FFF" />
+            <Text style={styles.addProgramButtonText}>Add</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+
+  const renderStudentSearch = () => (
+    <View style={styles.searchFullContainer}>
+      <View style={styles.searchFullBar}>
         <Icon name="search" size={20} color="#999" style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
@@ -474,14 +509,14 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
           onChangeText={handleSearch}
           returnKeyType="search"
         />
-        {searchQuery.length > 0 && (
+        {/* {searchQuery.length > 0 && (
           <TouchableOpacity onPress={() => handleSearch('')}>
             <Icon name="x" size={20} color="#999" />
           </TouchableOpacity>
-        )}
+        )} */}
       </View>
     </View>
-  );
+  )
 
   const renderFilterTabs = () => (
     <View style={styles.filterContainer}>
@@ -538,7 +573,7 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      {renderSearch()}
+      {user?.role === 'TEACHER' ? renderTeacherSearch() : renderStudentSearch()}
       {renderFilterTabs()}
 
       {loading && allMaterials.length === 0 ? (
@@ -707,6 +742,73 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
+  addProgramButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#4F46E5',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+    shadowColor: '#4F46E5',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  addProgramButtonText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  headContainer: {
+    padding: 10
+  },
+  searchBar: {
+    width: 250,
+    flexDirection: "row",
+    gap: 2,
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: '#ffffff',
+  },
+  searchFullBar: {
+    width: "95%",
+    flexDirection: "row",
+    gap: 2,
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: '#ffffff',
+  },
+  searchContainer: {
+    height: 40,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  searchFullContainer: {
+    height: 60,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  searchIcon: {
+    marginRight: 0,
+  },
+  searchInput: {
+    fontSize: 16,
+    color: '#1A1A1A',
+    padding: 0,
+    width: 200,
+  },
   container: {
     flex: 1,
     backgroundColor: '#F5F6FF',
@@ -724,29 +826,6 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 14,
     color: '#666',
-  },
-  searchContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
-    backgroundColor: '#FFFFFF',
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  searchIcon: {
-    marginRight: 10,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#1A1A1A',
-    padding: 0,
   },
   filterContainer: {
     backgroundColor: '#FFFFFF',
