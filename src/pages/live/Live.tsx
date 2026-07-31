@@ -108,7 +108,6 @@ const Live: React.FC<{ navigation: any }> = ({ navigation }) => {
   const fetchLiveSessions = async (page = 1) => {
     try {
       setLoading(true);
-      console.log('📡 Fetching live sessions...');
 
       const response = await api.get(`/live-classes?status=LIVE&page=${page}&limit=20`);
 
@@ -133,7 +132,6 @@ const Live: React.FC<{ navigation: any }> = ({ navigation }) => {
   const fetchScheduledSessions = async (page = 1) => {
     try {
       setLoading(true);
-      console.log('📡 Fetching live sessions...');
 
       const response = await api.get(`/live-classes?status=SCHEDULED&page=${page}&limit=20`);
 

@@ -1,6 +1,6 @@
 import { pick } from "@react-native-documents/picker";
 import ReactNativeBlobUtil from 'react-native-blob-util';
-import api from "../api/axios"; // your axios instance
+import api from "../api/axios";
 
 export async function upload() {
     // Pick file

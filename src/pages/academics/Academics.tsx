@@ -28,6 +28,7 @@ import AddAdmission from './pages/AddAdmission';
 // import GroupStudyScreen from './academics/GroupStudyScreen';
 import AssignmentsScreen from './pages/AssingmentScreen';
 import CreateAssessmentScreen from './pages/CreateAssignment';
+import PublishContent from './pages/PublishContent';
 // import LearningContentScreen from './academics/LearningContentScreen';
 // import ContentLibraryScreen from './academics/ContentLibraryScreen';
 
@@ -163,13 +164,13 @@ const Academics = () => {
           color: '#7B1FA2',
           component: CreateAssessmentScreen 
         },
-    //     { 
-    //       id: '4-3', 
-    //       name: 'Learning Content', 
-    //       icon: 'film', 
-    //       color: '#00838F',
-    //       component: LearningContentScreen 
-    //     },
+        { 
+          id: '4-3', 
+          name: 'Learning Content', 
+          icon: 'film', 
+          color: '#00838F',
+          component: PublishContent 
+        },
     //     { 
     //       id: '4-4', 
     //       name: 'Content Library', 

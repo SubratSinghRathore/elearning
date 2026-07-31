@@ -15,6 +15,7 @@ import ImageViewer from '../components/ImageViewer';
 import TakeAssessment from '../pages/assignment/TakeAssessment';
 import ScoreBoard from '../pages/scoreBoard/ScoreBoard';
 import PDFViewer from '../components/PDFViewer';
+import PublishContent from '../pages/academics/pages/PublishContent';
 
 export type RootStackParamList = {
   OnBoarding: undefined;
@@ -60,6 +61,7 @@ export type RootStackParamList = {
     assessmentId: string;
   };
   ScoreBoard: undefined;
+  PublishContent: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -143,6 +145,14 @@ const RootStack: React.FC = () => {
           <Stack.Screen
             name="ScoreBoard"
             component={ScoreBoard}
+            options={{
+              headerShown: false,
+              animation: 'slide_from_right',
+            }}
+          />
+          <Stack.Screen
+            name="PublishContent"
+            component={PublishContent}
             options={{
               headerShown: false,
               animation: 'slide_from_right',
