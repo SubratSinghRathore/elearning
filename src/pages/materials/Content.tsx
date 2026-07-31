@@ -28,7 +28,6 @@ import api from '../../api/axios';
 import { useNavigation } from '@react-navigation/native';
 import { bucketUrl } from '../../utils/url';
 import { useAuth } from '../../context/AuthContext';
-import { pick } from '@react-native-documents/picker';
 import UploadContent from '../../components/UploadContent';
 
 const { width, height } = Dimensions.get('window');
@@ -84,7 +83,6 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
   const [paused, setPaused] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
-
   const materialTypes = ['ALL', 'IMAGE', 'PDF', 'DOCUMENT', 'VIDEO', 'AUDIO'];
 
   useEffect(() => {
@@ -570,7 +568,7 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      {openUploadFile && <UploadContent openUploadFile={openUploadFile} setOpenUploadFile={setOpenUploadFile}/>}
+      {openUploadFile && <UploadContent openUploadFile={openUploadFile} setOpenUploadFile={setOpenUploadFile} />}
       {user?.role === 'TEACHER' ? renderTeacherSearch() : renderStudentSearch()}
       {renderFilterTabs()}
 
