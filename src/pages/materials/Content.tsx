@@ -29,6 +29,7 @@ import { useNavigation } from '@react-navigation/native';
 import { bucketUrl } from '../../utils/url';
 import { useAuth } from '../../context/AuthContext';
 import { pick } from '@react-native-documents/picker';
+import UploadContent from '../../components/UploadContent';
 
 const { width, height } = Dimensions.get('window');
 
@@ -75,7 +76,7 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
   const [hasMore, setHasMore] = useState(true);
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [uploadFile, setUploadFile] = useState(false);
+  const [openUploadFile, setOpenUploadFile] = useState(false);
   const { user } = useAuth()
   // Modal states
   const [modalVisible, setModalVisible] = useState(false);
@@ -466,10 +467,6 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
     );
   };
 
-  const handleAddContent = async () => {
-    setUploadFile(true);
-  }
-
   const renderTeacherSearch = () => (
     <View style={styles.headContainer}>
       <View style={styles.searchContainer}>
@@ -489,7 +486,7 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
           )} */}
         </View>
         <View>
-          <TouchableOpacity style={styles.addProgramButton} onPress={handleAddContent}>
+          <TouchableOpacity style={styles.addProgramButton} onPress={() => setOpenUploadFile(true)}>
             <Icon name="plus" size={20} color="#FFF" />
             <Text style={styles.addProgramButtonText}>Add</Text>
           </TouchableOpacity>
@@ -573,6 +570,7 @@ const Content: React.FC<ContentProps> = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
+      {openUploadFile && <UploadContent openUploadFile={openUploadFile} setOpenUploadFile={setOpenUploadFile}/>}
       {user?.role === 'TEACHER' ? renderTeacherSearch() : renderStudentSearch()}
       {renderFilterTabs()}
 
