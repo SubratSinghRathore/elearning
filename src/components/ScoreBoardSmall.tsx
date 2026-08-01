@@ -88,27 +88,29 @@ const ScoreBoardSmall = () => {
     const avgColor = getScoreColor(item.averageScore);
 
     return (
-      <View style={styles.studentRow}>
-        <View style={styles.avatarPlaceholder}>
-          <Text style={styles.avatarText}>
-            {item.studentName.charAt(0).toUpperCase()}
-          </Text>
+      <TouchableOpacity onPress={handleSeeAll}>
+        <View style={styles.studentRow}>
+          <View style={styles.avatarPlaceholder}>
+            <Text style={styles.avatarText}>
+              {item.studentName.charAt(0).toUpperCase()}
+            </Text>
+          </View>
+          <View style={styles.studentInfo}>
+            <Text style={styles.studentName} numberOfLines={1}>
+              {item.studentName}
+            </Text>
+            <Text style={styles.studentEmail} numberOfLines={1}>
+              {item.studentEmail}
+            </Text>
+          </View>
+          <View style={styles.scoreContainer}>
+            <Text style={[styles.scoreText, { color: avgColor }]}>
+              {item.averageScore}%
+            </Text>
+            <Text style={styles.testsText}>{item.testsAttempted} tests</Text>
+          </View>
         </View>
-        <View style={styles.studentInfo}>
-          <Text style={styles.studentName} numberOfLines={1}>
-            {item.studentName}
-          </Text>
-          <Text style={styles.studentEmail} numberOfLines={1}>
-            {item.studentEmail}
-          </Text>
-        </View>
-        <View style={styles.scoreContainer}>
-          <Text style={[styles.scoreText, { color: avgColor }]}>
-            {item.averageScore}%
-          </Text>
-          <Text style={styles.testsText}>{item.testsAttempted} tests</Text>
-        </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 

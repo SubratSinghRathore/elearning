@@ -469,7 +469,7 @@ const Profile = () => {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>PREFERENCES</Text>
 
-        <TouchableOpacity style={styles.menuItem} onPress={() => Alert.alert('Preferences', 'Navigate to preferences screen')}>
+        {/* <TouchableOpacity style={styles.menuItem} onPress={() => Alert.alert('Preferences', 'Navigate to preferences screen')}>
           <View style={styles.menuLeft}>
             <View style={[styles.iconContainer, { backgroundColor: '#E8F5E9' }]}>
               <Icon name="settings" size={20} color="#43A047" />
@@ -477,7 +477,7 @@ const Profile = () => {
             <Text style={styles.menuText}>Preferences</Text>
           </View>
           <Icon name="chevron-right" size={20} color="#999" />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
         <View style={styles.menuItem}>
           <View style={styles.menuLeft}>

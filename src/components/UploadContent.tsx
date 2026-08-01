@@ -1,10 +1,8 @@
-import { View, Text, StyleSheet, Modal, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, Image, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
-import { upload } from '../utils/upload';
+import { upload, abortUpload } from '../utils/upload';
 import { pick } from "@react-native-documents/picker";
-import ReactNativeBlobUtil from 'react-native-blob-util';
 import { useState } from 'react';
-import api from '../api/axios';
 import UploadProgressBar from './UploadProgressBar';
 
 type UploadFileProps = {
@@ -15,105 +13,49 @@ type UploadFileProps = {
 const UploadContent = ({ openUploadFile, setOpenUploadFile }: UploadFileProps) => {
 
     const [file, setFile] = useState<any>();
-    const [stat, setStat] = useState<any>();
-    const [status, setStatus] = useState<number>(0.7);
-    const [progress, setProgress] = useState<boolean>(false)
+    const [progress, setProgress] = useState<number>(0);
+    const [progressVisible, setProgressVisible] = useState(false);
 
     const selectFile = async () => {
-        // const [file] = await pick({
-        //     mode: "open",
-        // });
-        // setFile(file);
-        // try {
-        //     const tempStat = await ReactNativeBlobUtil.fs.stat(file.uri);
-        //     setStat(tempStat);
-        //     console.log("STAT SUCCESS");
-        //     console.log(stat);
-        // } catch (e) {
-        //     console.log("STAT ERROR");
-        //     console.log(e);
-        // }
-
-        upload()
+        //picking the file
+        if (file) {
+            Alert.alert('File already selected', 'Select another file it will remove current selected file', [
+                {
+                    text: 'close',
+                    style: 'cancel'
+                },
+                {
+                    text: 'select',
+                    onPress: async () => {
+                        const [file] = await pick({ mode: "open" });
+                        setFile(file);
+                    }
+                }
+            ])
+        } else {
+            const [file] = await pick({ mode: "open" });
+            setFile(file);
+        }
     }
 
     const uploadFile = async () => {
-
-        setProgress(true);
-        const create = await api.post(
-            "/uploads/materials/s3/multipart/create",
-            {
-                fileName: file.name,
-                fileType: file.type,
-                fileSize: file.size,
-                purpose: "CONTENT_LIBRARY",
-            }
-        );
-
-        const { uploadId, key, materialId } = create.data.data;
-
-        //calculating total parts
-        const chunkSize = 5 * 1024 * 1024;
-        const totalParts = Math.ceil(file.size / chunkSize);
-        console.log(totalParts);
-        // Sign first part
-        const sign = await api.post(
-            "/uploads/materials/s3/multipart/sign-part",
-            {
-                uploadId,
-                key,
-                partNumber: 1,
-            }
-        );
-
-        const signedUrl = sign.data.data.signedUrl;
-
-        try {
-            const res = await ReactNativeBlobUtil.fetch(
-                "PUT",
-                signedUrl,
-                {
-                    "Content-Type": file.type || "application/octet-stream",
-                },
-                ReactNativeBlobUtil.wrap(file.uri)
-            );
-
-            const headers = res.info().headers;
-
-            const etag =
-                headers.ETag ||
-                headers.etag ||
-                headers.Etag;
-
-            const complete = await api.post(
-                "/uploads/materials/s3/multipart/complete",
-                {
-                    uploadId,
-                    key,
-                    materialId,
-                    parts: [
-                        {
-                            PartNumber: 1,
-                            ETag: etag,
-                        },
-                    ],
-                }
-            );
-
-            console.log("COMPLETE");
-            console.log(complete.data);
-        } catch (e) {
-            console.log("UPLOAD ERROR");
-            console.log(e);
+        if (!file) {
+            Alert.alert('Please select file to upload');
+            return;
         }
+        setProgressVisible(true);
+        upload({ file, onProgress: (e: number) => setProgress(e) })
+    }
 
-        return {
-            file,
-            uploadId,
-            key,
-            materialId,
-            signedUrl: sign.data.data.signedUrl,
-        };
+    const cancelUpload = () => {
+        Alert.alert("Cancel Upload", "Are you sure to cancel upload", [{
+            text: 'close',
+            style: 'cancel'
+        }, {
+            text: 'cancel',
+            style: 'destructive',
+            onPress: async () => { await abortUpload(), setOpenUploadFile(false) }
+        }])
     }
 
     return (
@@ -127,7 +69,6 @@ const UploadContent = ({ openUploadFile, setOpenUploadFile }: UploadFileProps) =
                 <TouchableOpacity
                     style={styles.backdrop}
                     activeOpacity={1}
-                    onPress={() => setOpenUploadFile(false)}
                 />
                 <View style={styles.popup}>
                     {/* Header */}
@@ -138,23 +79,24 @@ const UploadContent = ({ openUploadFile, setOpenUploadFile }: UploadFileProps) =
                         </TouchableOpacity>
                     </View>
 
-                    {progress && <UploadProgressBar visible={true} progress={status} />}
+                    {progressVisible && <UploadProgressBar visible={true} progress={progress} />}
                     {/* File Preview Area */}
                     <View style={styles.filePreviewContainer}>
-                        <View style={styles.emptyStateContainer}>
-                            <Icon name="upload-cloud" size={60} color="#C7C7CC" />
-                            <Text style={styles.emptyStateText}>No file selected</Text>
-                            <Text style={styles.emptyStateSubText}>
-                                {file ? file.name : 'Tap Select File to choose a file to upload'}
-                            </Text>
-                        </View>
+                        <TouchableOpacity onPress={selectFile}>
+                            <View style={styles.emptyStateContainer}>
+                                <Icon name="upload-cloud" size={60} color="#C7C7CC" />
+                                <Text style={styles.emptyStateText}>No file selected</Text>
+                                <Text style={styles.emptyStateSubText}>
+                                    {file ? file.name : 'Tap to select file to upload'}
+                                </Text>
+                            </View>
+                        </TouchableOpacity>
                     </View>
 
                     {/* Action Buttons */}
                     <View style={styles.actionContainer}>
-                        <TouchableOpacity style={[styles.button, styles.selectButton]} onPress={selectFile}>
-                            <Icon name="folder" size={20} color="#007AFF" />
-                            <Text style={styles.selectButtonText}>Select File</Text>
+                        <TouchableOpacity style={[styles.button, styles.selectButton]} onPress={cancelUpload}>
+                            <Text style={styles.selectButtonText}>Cancel</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={[styles.button, styles.uploadButton]} onPress={uploadFile}>

@@ -1,25 +1,42 @@
-import { pick } from "@react-native-documents/picker";
 import ReactNativeBlobUtil from "react-native-blob-util";
 import api from "../api/axios";
+import { Alert } from "react-native";
 
-const PART_SIZE = 8 * 1024 * 1024; // 8MB — must be >= 5MB (S3 min, except the last part)
+const PART_SIZE = 8 * 1024 * 1024;
 
 interface UploadPart {
     PartNumber: number;
     ETag: string;
 }
 
-export async function upload(onProgress?: (percent: number) => void) {
-    // Pick file
-    const [file] = await pick({ mode: "open" });
+type uploadType = {
+    file: any;
+    onProgress: (e: number) => void
+}
 
+type uploadDeatilsType = {
+    uploadId: string;
+    key: string;
+    materialId: string
+}
+
+const uploadDetail: uploadDeatilsType = {
+    uploadId: "",
+    key: "",
+    materialId: ""
+};
+
+export async function upload({ file, onProgress }: uploadType) {
+
+    //Retriving file path
     const localPath = `${ReactNativeBlobUtil.fs.dirs.CacheDir}/${Date.now()}_${file.name}`;
     await ReactNativeBlobUtil.fs.cp(file.uri, localPath);
-    const stat = await ReactNativeBlobUtil.fs.stat(localPath);
-    const fileSize = Number(stat.size) || file.size || 0;
+
+    //Calculating size
+    const fileSize = file.size || 0;
 
     if (!fileSize) {
-        await ReactNativeBlobUtil.fs.unlink(localPath).catch(() => {});
+        await ReactNativeBlobUtil.fs.unlink(localPath).catch(() => { });
         throw new Error("Could not determine file size");
     }
 
@@ -35,6 +52,9 @@ export async function upload(onProgress?: (percent: number) => void) {
 
     const { uploadId, key, materialId } = create.data.data;
     const parts: UploadPart[] = [];
+    uploadDetail.uploadId = uploadId;
+    uploadDetail.key = key;
+    uploadDetail.materialId = materialId;
 
     try {
         for (let partNumber = 1; partNumber <= totalParts; partNumber++) {
@@ -52,7 +72,7 @@ export async function upload(onProgress?: (percent: number) => void) {
             });
 
             parts.push({ PartNumber: partNumber, ETag: etag });
-            onProgress?.(Math.round((partNumber / totalParts) * 100));
+            onProgress?.(partNumber / totalParts);
         }
 
         const complete = await api.post("/uploads/materials/s3/multipart/complete", {
@@ -61,6 +81,10 @@ export async function upload(onProgress?: (percent: number) => void) {
             materialId,
             parts,
         });
+
+        if (complete.status >= 200 && complete.status <= 300) {
+            Alert.alert('Upload successfully');
+        }
 
         return {
             file,
@@ -71,11 +95,11 @@ export async function upload(onProgress?: (percent: number) => void) {
         };
     } catch (e) {
         // Don't leave an orphaned multipart upload sitting on S3
-        await abortUpload({ uploadId, key }).catch(() => {});
+        await abortUpload();
         throw e;
     } finally {
         // Clean up our local copy of the picked file
-        ReactNativeBlobUtil.fs.unlink(localPath).catch(() => {});
+        ReactNativeBlobUtil.fs.unlink(localPath).catch(() => { });
     }
 }
 
@@ -136,10 +160,13 @@ async function uploadPart({
         return etag.replace(/"/g, "");
     } finally {
         // Always clean up the temp slice, success or failure
-        ReactNativeBlobUtil.fs.unlink(slicePath).catch(() => {});
+        ReactNativeBlobUtil.fs.unlink(slicePath).catch(() => { });
     }
 }
 
-async function abortUpload({ uploadId, key }: { uploadId: string; key: string }) {
-    return api.post("/uploads/materials/s3/multipart/abort", { uploadId, key });
+export async function abortUpload() {
+    if (uploadDetail.key === '') return;
+    if (uploadDetail.materialId === '') return;
+    if (uploadDetail.uploadId === '') return;
+    return api.post("/uploads/materials/s3/multipart/abort", uploadDetail);
 }
