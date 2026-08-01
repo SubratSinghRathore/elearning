@@ -5,7 +5,7 @@ import { pick } from "@react-native-documents/picker";
 import ReactNativeBlobUtil from 'react-native-blob-util';
 import { useState } from 'react';
 import api from '../api/axios';
-import UploadProgressBar from './uploadProgressBar';
+import UploadProgressBar from './UploadProgressBar';
 
 type UploadFileProps = {
     openUploadFile: boolean;
@@ -20,19 +20,21 @@ const UploadContent = ({ openUploadFile, setOpenUploadFile }: UploadFileProps) =
     const [progress, setProgress] = useState<boolean>(false)
 
     const selectFile = async () => {
-        const [file] = await pick({
-            mode: "open",
-        });
-        setFile(file);
-        try {
-            const tempStat = await ReactNativeBlobUtil.fs.stat(file.uri);
-            setStat(tempStat);
-            console.log("STAT SUCCESS");
-            console.log(stat);
-        } catch (e) {
-            console.log("STAT ERROR");
-            console.log(e);
-        }
+        // const [file] = await pick({
+        //     mode: "open",
+        // });
+        // setFile(file);
+        // try {
+        //     const tempStat = await ReactNativeBlobUtil.fs.stat(file.uri);
+        //     setStat(tempStat);
+        //     console.log("STAT SUCCESS");
+        //     console.log(stat);
+        // } catch (e) {
+        //     console.log("STAT ERROR");
+        //     console.log(e);
+        // }
+
+        upload()
     }
 
     const uploadFile = async () => {
